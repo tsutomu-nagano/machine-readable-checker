@@ -1,0 +1,7 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #172033; background: #f4f7fb; }
+main { max-width: 760px; margin: 4rem auto; padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 20px #17203318; }
+form { display: grid; gap: .75rem; margin: 2rem 0; }
+button { width: fit-content; padding: .6rem 1rem; border: 0; border-radius: 6px; color: white; background: #1455a3; font-weight: 700; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .7rem; text-align: left; border-bottom: 1px solid #d9e0ea; }
+#status { min-height: 1.5rem; }
