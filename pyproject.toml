@@ -7,6 +7,7 @@ name = "machine-readable-checker"
 version = "0.1.0"
 description = "CSV and Excel checks for machine-readable statistical tables"
 requires-python = ">=3.10"
+dependencies = ["openpyxl>=3.1,<4"]
 
 [project.scripts]
 machine-readable-checker = "machine_readable_checker.cli:main"
