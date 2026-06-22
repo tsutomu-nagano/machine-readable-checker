@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import csv
 import re
-import zipfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
-from xml.etree import ElementTree as ET
 
-NS = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 FORBIDDEN_LAYOUT = re.compile(r"[\r\n]| {2,}")
 DEPENDENT_WORDS = re.compile(r"[①②③④⑤⑥⑦⑧⑨⑩㈱㈲㍾㍽㍼㍻]" )
 NUMERIC_WITH_DECORATION = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*(?:[%％円人件戸\*†])\s*$")
@@ -112,46 +111,21 @@ def check_file(path: str | Path) -> CheckResult:
 def _check_xlsx(path: Path) -> CheckResult:
     result = CheckResult(str(path))
     try:
-        with zipfile.ZipFile(path) as archive:
-            names = set(archive.namelist())
-            if any(name.startswith("xl/drawings/") for name in names):
+        workbook = load_workbook(path, data_only=False, read_only=False)
+        if not workbook.worksheets:
+            _add(result, "empty-workbook", "ワークシートがありません。", "error")
+            return result
+        for sheet in workbook.worksheets:
+            if sheet.merged_cells.ranges:
+                _add(result, "merged-cells", "セル結合は使用しないでください。")
+            if sheet._images or sheet._charts:
                 _add(result, "xlsx-object", "図形・画像等のオブジェクトではなくセルにデータを入力してください。")
-            shared = _shared_strings(archive) if "xl/sharedStrings.xml" in names else []
-            sheets = sorted(name for name in names if name.startswith("xl/worksheets/sheet") and name.endswith(".xml"))
-            if not sheets:
-                _add(result, "empty-workbook", "ワークシートがありません。", "error")
-                return result
-            for sheet_name in sheets:
-                root = ET.fromstring(archive.read(sheet_name))
-                if root.find("x:mergeCells", NS) is not None:
-                    _add(result, "merged-cells", "セル結合は使用しないでください。")
-                if root.findall(".//x:f", NS):
-                    _add(result, "formulas", "結果表は数式ではなく値として出力してください。")
-                rows = _xlsx_rows(root, shared)
-                sheet_result = check_rows(rows, f"{path}:{Path(sheet_name).stem}")
-                result.findings.extend(sheet_result.findings)
-    except (OSError, zipfile.BadZipFile, ET.ParseError) as error:
+            if any(cell.data_type == "f" for row in sheet.iter_rows() for cell in row):
+                _add(result, "formulas", "結果表は数式ではなく値として出力してください。")
+            rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
+            sheet_result = check_rows(rows, f"{path}:{sheet.title}")
+            result.findings.extend(sheet_result.findings)
+        workbook.close()
+    except (OSError, InvalidFileException, ValueError) as error:
         _add(result, "invalid-xlsx", f"XLSX を読み取れません: {error}", "error")
     return result
-
-
-def _shared_strings(archive: zipfile.ZipFile) -> list[str]:
-    root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
-    return ["".join(node.itertext()) for node in root.findall("x:si", NS)]
-
-
-def _xlsx_rows(root: ET.Element, shared: list[str]) -> list[list[str]]:
-    output: list[list[str]] = []
-    for row in root.findall(".//x:sheetData/x:row", NS):
-        values: list[str] = []
-        for cell in row.findall("x:c", NS):
-            kind = cell.get("t")
-            value_node = cell.find("x:v", NS)
-            value = "" if value_node is None or value_node.text is None else value_node.text
-            if kind == "s" and value.isdigit() and int(value) < len(shared):
-                value = shared[int(value)]
-            elif kind == "inlineStr":
-                value = "".join(cell.itertext())
-            values.append(value)
-        output.append(values)
-    return output
