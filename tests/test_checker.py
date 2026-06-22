@@ -1,6 +1,10 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from machine_readable_checker.checker import check_rows
+from openpyxl import Workbook
+
+from machine_readable_checker.checker import check_file, check_rows
 
 
 def codes(rows):
@@ -20,3 +24,20 @@ class CheckerTests(unittest.TestCase):
     def test_checks_decorated_values_and_layout(self):
         result = codes([["年", "人口"], ["令和 7年", "1,200 人"], ["2026", "A  B"]])
         self.assertTrue({"era-only-date", "decorated-number", "layout-whitespace"} <= result)
+
+    def test_reads_xlsx_with_openpyxl_and_detects_workbook_features(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "table.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.append(["年", "人口"])
+            sheet.append(["2025", "100"])
+            sheet["C1"] = "結合項目"
+            sheet.merge_cells("C1:D1")
+            sheet["B2"] = "=50+50"
+            workbook.save(path)
+            workbook.close()
+
+            result = check_file(path)
+
+        self.assertTrue({"merged-cells", "formulas"} <= {item.code for item in result.findings})
