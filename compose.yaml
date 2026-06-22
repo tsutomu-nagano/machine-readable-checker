@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+
+  test:
+    build: .
+    command: python -m unittest discover -s tests -v
+    profiles: ["test"]
