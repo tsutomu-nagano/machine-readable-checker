@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machine-readable-checker"
+version = "0.1.0"
+description = "CSV and Excel checks for machine-readable statistical tables"
+requires-python = ">=3.10"
+
+[project.scripts]
+machine-readable-checker = "machine_readable_checker.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
