@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>機械判読可能性チェッカー</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body>
+    <main>
+      <h1>機械判読可能性チェッカー</h1>
+      <p>CSV、TSV、Excel（.xlsx / .xls）をアップロードして検査します。</p>
+      <form id="check-form">
+        <label for="file">検査するファイル</label>
+        <input id="file" name="file" type="file" accept=".csv,.tsv,.xlsx,.xls" required>
+        <button type="submit">チェックする</button>
+      </form>
+      <p id="status" role="status"></p>
+      <section id="result" hidden>
+        <h2>検査結果</h2>
+        <p id="summary"></p>
+        <table>
+          <thead><tr><th>重要度</th><th>場所</th><th>内容</th></tr></thead>
+          <tbody id="findings"></tbody>
+        </table>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -7,11 +7,23 @@ name = "machine-readable-checker"
 version = "0.1.0"
 description = "CSV and Excel checks for machine-readable statistical tables"
 requires-python = ">=3.10"
-dependencies = ["openpyxl>=3.1,<4"]
+dependencies = [
+  "fastapi>=0.115,<1",
+  "openpyxl>=3.1,<4",
+  "python-multipart>=0.0.9,<1",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+test = ["httpx>=0.27,<1"]
 
 [project.scripts]
 machine-readable-checker = "machine_readable_checker.cli:main"
+machine-readable-checker-api = "machine_readable_checker.api:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.setuptools.package-data]
+machine_readable_checker = ["static/*"]

@@ -24,10 +24,33 @@ machine-readable-checker sample.xlsx
 machine-readable-checker --json result.csv
 ```
 
+## API と Web UI
+
+```bash
+python -m pip install ".[test]"
+machine-readable-checker-api
+```
+
+ブラウザで `http://localhost:8000` を開くと、ファイルをアップロードして検査結果を確認できます。
+
+API は `POST /api/check` です。`multipart/form-data` の `file` フィールドに CSV、TSV、XLSX、XLS を指定すると、検査結果を JSON で返します。アップロード上限は 25 MB です。
+
+### Docker で起動・テスト
+
+```bash
+docker compose up --build
+```
+
+起動後、`http://localhost:8000` を開きます。テストだけを Docker で実行する場合は、別のターミナルで次を実行します。
+
+```bash
+docker compose --profile test run --rm test
+```
+
 ## 開発時のテスト
 
 ```bash
-python -m pytest
+python -m unittest discover -s tests -v
 ```
 
 参考資料: [e-Stat: 結果表における機械判読可能なデータ作成に関する表記方法](https://www.e-stat.go.jp/estat/html/machine-readable-stats-format.pdf)
