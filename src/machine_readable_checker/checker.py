@@ -33,7 +33,55 @@ class CheckResult:
         return not any(item.severity == "error" for item in self.findings)
 
     def as_dict(self) -> dict:
-        return {"path": self.path, "valid": self.valid, "findings": [asdict(item) for item in self.findings]}
+        checks = _check_statuses(self.path, self.findings)
+        return {
+            "path": self.path,
+            "valid": self.valid,
+            "findings": [asdict(item) for item in self.findings],
+            "checks": checks,
+            "summary": {
+                "issues_found": sum(item["status"] == "issues_found" for item in checks),
+                "passed": sum(item["status"] == "passed" for item in checks),
+                "not_applicable": sum(item["status"] == "not_applicable" for item in checks),
+            },
+        }
+
+
+CHECK_GROUPS = (
+    ("file-format", "ファイル形式・読み取り", ("unsupported-format", "invalid-xlsx", "empty-workbook", "legacy-xls"), "all"),
+    ("headers", "項目名の欠落・重複", ("missing-header", "duplicate-header"), "table"),
+    ("table-structure", "列数・空白行などの表構造", ("leading-empty-rows", "inconsistent-columns", "split-table", "empty-table"), "table"),
+    ("layout", "空白・改行による体裁調整", ("layout-whitespace",), "table"),
+    ("characters", "機種依存文字", ("dependent-character",), "table"),
+    ("numbers", "数値と単位・記号の混在", ("decorated-number",), "table"),
+    ("dates", "和暦のみの時間軸", ("era-only-date",), "table"),
+    ("xlsx-merged-cells", "XLSX のセル結合", ("merged-cells",), "xlsx"),
+    ("xlsx-formulas", "XLSX の数式", ("formulas",), "xlsx"),
+    ("xlsx-objects", "XLSX の図形・画像等のオブジェクト", ("xlsx-object",), "xlsx"),
+)
+
+
+def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
+    """Return every check outcome, including checks with no detected issue."""
+    suffix = Path(path).suffix.lower()
+    if suffix not in {".csv", ".tsv", ".xlsx", ".xls"} and ":" in path:
+        suffix = Path(path.rsplit(":", 1)[0]).suffix.lower()
+    has_table = suffix in {".csv", ".tsv", ".xlsx"}
+    present_codes = {finding.code for finding in findings}
+    statuses: list[dict] = []
+    for check_id, label, codes, scope in CHECK_GROUPS:
+        applicable = scope == "all" or scope == "table" and has_table or scope == "xlsx" and suffix == ".xlsx"
+        detected = sorted(set(codes) & present_codes)
+        statuses.append(
+            {
+                "id": check_id,
+                "label": label,
+                "status": "not_applicable" if not applicable else "issues_found" if detected else "passed",
+                "finding_codes": detected,
+                "finding_count": sum(finding.code in codes for finding in findings),
+            }
+        )
+    return statuses
 
 
 def _add(result: CheckResult, code: str, message: str, severity: str = "warning", row: int | None = None, column: int | None = None) -> None:
