@@ -5,3 +5,8 @@ button { width: fit-content; padding: .6rem 1rem; border: 0; border-radius: 6px;
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: .7rem; text-align: left; border-bottom: 1px solid #d9e0ea; }
 #status { min-height: 1.5rem; }
+.checks { padding-left: 1.25rem; }
+.check { margin: .35rem 0; }
+.check-passed { color: #137333; }
+.check-issues_found { color: #9c2222; }
+.check-not_applicable { color: #667085; }

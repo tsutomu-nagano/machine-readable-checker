@@ -25,8 +25,24 @@ class ApiTests(unittest.TestCase):
             files={"file": ("table.csv", "年,人口\n2025,100\n", "text/csv")},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["filename"], "table.csv")
-        self.assertTrue(response.json()["valid"])
+        payload = response.json()
+        self.assertEqual(payload["filename"], "table.csv")
+        self.assertTrue(payload["valid"])
+        checks = {item["id"]: item["status"] for item in payload["checks"]}
+        self.assertEqual(checks["headers"], "passed")
+        self.assertEqual(checks["xlsx-formulas"], "not_applicable")
+        self.assertEqual(payload["summary"]["issues_found"], 0)
+
+    def test_findings_include_a_japanese_e_stat_check_item(self):
+        response = self.client.post(
+            "/api/check",
+            files={"file": ("table.csv", "年,人口\n令和 7年,100\n", "text/csv")},
+        )
+        finding = next(item for item in response.json()["findings"] if item["code"] == "era-only-date")
+        self.assertEqual(
+            finding["check_item"],
+            "チェック項目２-10 西暦表記又は和暦に西暦の併記がされているか",
+        )
 
     def test_rejects_unsupported_upload(self):
         response = self.client.post("/api/check", files={"file": ("table.txt", b"text", "text/plain")})
