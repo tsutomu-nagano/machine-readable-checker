@@ -41,3 +41,9 @@ class CheckerTests(unittest.TestCase):
             result = check_file(path)
 
         self.assertTrue({"merged-cells", "formulas"} <= {item.code for item in result.findings})
+
+    def test_findings_include_the_cell_value(self):
+        findings = check_rows([["年", "人口"], ["令和 7年", "1,200 人"]]).findings
+        values_by_code = {finding.code: finding.value for finding in findings}
+        self.assertEqual(values_by_code["era-only-date"], "令和 7年")
+        self.assertEqual(values_by_code["decorated-number"], "1,200 人")
