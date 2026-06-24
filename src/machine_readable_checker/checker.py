@@ -21,6 +21,7 @@ class Finding:
     severity: str = "warning"
     row: int | None = None
     column: int | None = None
+    value: str | None = None
 
 
 @dataclass
@@ -84,8 +85,16 @@ def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
     return statuses
 
 
-def _add(result: CheckResult, code: str, message: str, severity: str = "warning", row: int | None = None, column: int | None = None) -> None:
-    result.findings.append(Finding(code, message, severity, row, column))
+def _add(
+    result: CheckResult,
+    code: str,
+    message: str,
+    severity: str = "warning",
+    row: int | None = None,
+    column: int | None = None,
+    value: str | None = None,
+) -> None:
+    result.findings.append(Finding(code, message, severity, row, column, value))
 
 
 def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> CheckResult:
@@ -105,9 +114,9 @@ def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> Chec
     for col, name in enumerate(header, 1):
         clean = name.strip()
         if not clean:
-            _add(result, "missing-header", "項目名を省略しないでください。", "error", first + 1, col)
+            _add(result, "missing-header", "項目名を省略しないでください。", "error", first + 1, col, name)
         elif clean in names:
-            _add(result, "duplicate-header", f"項目名「{clean}」が重複しています。", "error", first + 1, col)
+            _add(result, "duplicate-header", f"項目名「{clean}」が重複しています。", "error", first + 1, col, name)
         else:
             names[clean] = col
 
@@ -130,13 +139,13 @@ def _check_cell(result: CheckResult, value: str, row: int, column: int) -> None:
     if not value:
         return
     if FORBIDDEN_LAYOUT.search(value):
-        _add(result, "layout-whitespace", "空白や改行で体裁を整えず、列を分けてください。", "warning", row, column)
+        _add(result, "layout-whitespace", "空白や改行で体裁を整えず、列を分けてください。", "warning", row, column, value)
     if DEPENDENT_WORDS.search(value):
-        _add(result, "dependent-character", "機種依存文字は使用しないでください。", "warning", row, column)
+        _add(result, "dependent-character", "機種依存文字は使用しないでください。", "warning", row, column, value)
     if NUMERIC_WITH_DECORATION.match(value):
-        _add(result, "decorated-number", "数値・単位・注記は別の列にしてください。", "warning", row, column)
+        _add(result, "decorated-number", "数値・単位・注記は別の列にしてください。", "warning", row, column, value)
     if ERA_ONLY.match(value.strip()):
-        _add(result, "era-only-date", "時間軸は西暦を併記してください。", "warning", row, column)
+        _add(result, "era-only-date", "時間軸は西暦を併記してください。", "warning", row, column, value)
 
 
 def check_file(path: str | Path) -> CheckResult:
@@ -164,12 +173,21 @@ def _check_xlsx(path: Path) -> CheckResult:
             _add(result, "empty-workbook", "ワークシートがありません。", "error")
             return result
         for sheet in workbook.worksheets:
-            if sheet.merged_cells.ranges:
-                _add(result, "merged-cells", "セル結合は使用しないでください。")
+            for merged_range in sheet.merged_cells.ranges:
+                _add(
+                    result,
+                    "merged-cells",
+                    "セル結合は使用しないでください。",
+                    row=merged_range.min_row,
+                    column=merged_range.min_col,
+                    value=str(merged_range),
+                )
             if sheet._images or sheet._charts:
                 _add(result, "xlsx-object", "図形・画像等のオブジェクトではなくセルにデータを入力してください。")
-            if any(cell.data_type == "f" for row in sheet.iter_rows() for cell in row):
-                _add(result, "formulas", "結果表は数式ではなく値として出力してください。")
+            for row in sheet.iter_rows():
+                for cell in row:
+                    if cell.data_type == "f":
+                        _add(result, "formulas", "結果表は数式ではなく値として出力してください。", row=cell.row, column=cell.column, value=str(cell.value))
             rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
             sheet_result = check_rows(rows, f"{path}:{sheet.title}")
             result.findings.extend(sheet_result.findings)
