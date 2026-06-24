@@ -32,6 +32,7 @@ form.addEventListener("submit", async (event) => {
       const row = document.createElement("tr");
       const cells = [
         finding.severity,
+        finding.check_item ?? "—",
         finding.row ? `${finding.row} 行 ${finding.column || ""} 列` : "",
         finding.value ?? "",
         finding.message
@@ -43,7 +44,7 @@ form.addEventListener("submit", async (event) => {
       }
       return row;
     }));
-    if (!data.findings.length) findings.innerHTML = "<tr><td colspan=\"4\">指摘はありません。</td></tr>";
+    if (!data.findings.length) findings.innerHTML = "<tr><td colspan=\"5\">指摘はありません。</td></tr>";
     result.hidden = false;
   } catch (error) {
     status.textContent = error.message;
