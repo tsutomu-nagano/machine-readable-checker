@@ -30,10 +30,20 @@ form.addEventListener("submit", async (event) => {
     }));
     findings.replaceChildren(...data.findings.map((finding) => {
       const row = document.createElement("tr");
-      row.innerHTML = `<td>${finding.severity}</td><td>${finding.row ? `${finding.row} 行 ${finding.column || ""} 列` : ""}</td><td>${finding.message}</td>`;
+      const cells = [
+        finding.severity,
+        finding.row ? `${finding.row} 行 ${finding.column || ""} 列` : "",
+        finding.value ?? "",
+        finding.message
+      ];
+      for (const value of cells) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      }
       return row;
     }));
-    if (!data.findings.length) findings.innerHTML = "<tr><td colspan=\"3\">指摘はありません。</td></tr>";
+    if (!data.findings.length) findings.innerHTML = "<tr><td colspan=\"4\">指摘はありません。</td></tr>";
     result.hidden = false;
   } catch (error) {
     status.textContent = error.message;
