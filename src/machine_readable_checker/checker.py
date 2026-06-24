@@ -38,7 +38,7 @@ class CheckResult:
         return {
             "path": self.path,
             "valid": self.valid,
-            "findings": [asdict(item) for item in self.findings],
+            "findings": [_finding_as_dict(item) for item in self.findings],
             "checks": checks,
             "summary": {
                 "issues_found": sum(item["status"] == "issues_found" for item in checks),
@@ -46,6 +46,29 @@ class CheckResult:
                 "not_applicable": sum(item["status"] == "not_applicable" for item in checks),
             },
         }
+
+
+# 表記は e-Stat「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」の
+# チェック項目名から抜粋している。
+CHECK_ITEM_REFERENCES = {
+    "missing-header": "チェック項目２-５ 項目名等を省略していないか",
+    "duplicate-header": "チェック項目２-５ 項目名等を省略していないか",
+    "inconsistent-columns": "チェック項目４-５ １行１データで表現されているか",
+    "leading-empty-rows": "チェック項目４-１３ データが分断されていないか",
+    "split-table": "チェック項目４-１３ データが分断されていないか",
+    "layout-whitespace": "チェック項目２-４ スペースや改行等で体裁を整えていないか",
+    "dependent-character": "チェック項目２-９ 機種依存文字を使用していないか。",
+    "decorated-number": "チェック項目２-２ 数値データは数値属性とし、文字列を含まないこと",
+    "era-only-date": "チェック項目２-10 西暦表記又は和暦に西暦の併記がされているか",
+    "merged-cells": "チェック項目２-３ セルの結合をしていないか",
+    "formulas": "チェック項目２-６ 数式を使用している場合は、数値データに修正しているか",
+}
+
+
+def _finding_as_dict(finding: Finding) -> dict:
+    result = asdict(finding)
+    result["check_item"] = CHECK_ITEM_REFERENCES.get(finding.code)
+    return result
 
 
 CHECK_GROUPS = (
