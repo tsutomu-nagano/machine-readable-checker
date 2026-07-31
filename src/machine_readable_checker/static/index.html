@@ -62,7 +62,10 @@
                   <h2 id="checks-heading">チェックごとの結果</h2>
                   <p>e-Stat のチェック項目ごとの状態を一覧できます。</p>
                 </div>
-                <button id="api-json-toggle" class="secondary-button" type="button">API JSON</button>
+                <div class="section-actions">
+                  <button id="issues-only-toggle" class="secondary-button" type="button" aria-pressed="false">指摘ありのみ</button>
+                  <button id="api-json-toggle" class="secondary-button" type="button">API JSON</button>
+                </div>
               </div>
               <pre id="api-json" class="json-view" hidden></pre>
               <div class="checks-layout">

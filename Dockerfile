@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY . .
-RUN python -m pip install --no-cache-dir ".[test]"
+RUN python -m pip install --no-cache-dir -e ".[test]"
 
 EXPOSE 8000
 

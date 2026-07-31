@@ -1,6 +1,8 @@
 services:
   app:
     build: .
+    volumes:
+      - ./src:/app/src
     ports:
       - "8015:8000"
 

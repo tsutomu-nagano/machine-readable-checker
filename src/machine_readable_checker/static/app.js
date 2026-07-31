@@ -7,10 +7,14 @@ const checks = document.querySelector("#checks");
 const checkDetail = document.querySelector("#check-detail");
 const apiJson = document.querySelector("#api-json");
 const apiJsonToggle = document.querySelector("#api-json-toggle");
+const issuesOnlyToggle = document.querySelector("#issues-only-toggle");
 const sourceInputs = document.querySelectorAll("input[name='source']");
 const sourcePanels = document.querySelectorAll("[data-source-panel]");
 const fileInput = document.querySelector("#file");
 const urlInput = document.querySelector("#url");
+let currentCheckItems = [];
+let selectedCheckItemId = "";
+let showOnlyIssues = false;
 
 const statusLabels = {
   passed: "問題なし",
@@ -135,6 +139,13 @@ apiJsonToggle.addEventListener("click", () => {
   apiJsonToggle.textContent = willShow ? "JSONを隠す" : "API JSON";
 });
 
+issuesOnlyToggle.addEventListener("click", () => {
+  showOnlyIssues = !showOnlyIssues;
+  issuesOnlyToggle.setAttribute("aria-pressed", String(showOnlyIssues));
+  issuesOnlyToggle.classList.toggle("is-active", showOnlyIssues);
+  renderVisibleCheckItems();
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   status.textContent = "検査しています…";
@@ -189,7 +200,7 @@ function renderSummary(data) {
 
 function renderCheckItems(sourceChecks, allFindings) {
   const sourceChecksById = new Map(sourceChecks.map((check) => [check.id, check]));
-  const checkItems = estatCheckItems.map((item) => {
+  currentCheckItems = estatCheckItems.map((item) => {
     const relatedFindings = allFindings.filter((finding) => item.codes.includes(finding.code));
     const sourceStatuses = item.sourceCheckIds
       .map((id) => sourceChecksById.get(id)?.status)
@@ -199,12 +210,33 @@ function renderCheckItems(sourceChecks, allFindings) {
       : sourceStatuses.length && sourceStatuses.every((sourceStatus) => sourceStatus === "not_applicable")
         ? "not_applicable"
         : "passed";
-    const detail = status === "issues_found" ? `${relatedFindings.length}件` : statusLabels[status];
+    const detail = status === "issues_found" ? `指摘あり ${relatedFindings.length}件` : statusLabels[status];
     return { ...item, relatedFindings, status, detail };
   });
-  const selectedItem = checkItems.find((item) => item.status === "issues_found") ?? checkItems[0];
+  selectedCheckItemId = currentCheckItems.find((item) => item.status === "issues_found")?.id ?? currentCheckItems[0]?.id ?? "";
+  renderVisibleCheckItems();
+}
 
-  checks.replaceChildren(...checkItems.map((item) => {
+function renderVisibleCheckItems() {
+  const visibleCheckItems = showOnlyIssues
+    ? currentCheckItems.filter((item) => item.status === "issues_found")
+    : currentCheckItems;
+  const selectedItem = visibleCheckItems.find((item) => item.id === selectedCheckItemId) ?? visibleCheckItems[0];
+
+  if (!visibleCheckItems.length) {
+    checks.replaceChildren(
+      element("div", { className: "empty-state" }, [
+        element("strong", {}, "問題ありのチェック項目はありません。"),
+        element("p", {}, "表示対象をすべてに戻すと、問題なしや対象外の項目を確認できます。")
+      ])
+    );
+    renderEmptyCheckDetail();
+    return;
+  }
+
+  selectedCheckItemId = selectedItem.id;
+
+  checks.replaceChildren(...visibleCheckItems.map((item) => {
     const card = element("article", {
       className: `check-card check-${item.status}${item.id === selectedItem.id ? " selected" : ""}`,
       role: "button",
@@ -258,6 +290,7 @@ function renderCheckItemSituation(status, relatedFindings) {
 }
 
 function selectCheckItem(card, item) {
+  selectedCheckItemId = item.id;
   checks.querySelectorAll(".check-card").forEach((checkCard) => {
     checkCard.classList.remove("selected");
     checkCard.setAttribute("aria-pressed", "false");
@@ -265,6 +298,16 @@ function selectCheckItem(card, item) {
   card.classList.add("selected");
   card.setAttribute("aria-pressed", "true");
   renderCheckDetail(item);
+}
+
+function renderEmptyCheckDetail() {
+  checkDetail.className = "check-detail";
+  checkDetail.replaceChildren(
+    element("div", { className: "empty-state" }, [
+      element("strong", {}, "表示できるチェック項目がありません。"),
+      element("p", {}, "指摘ありのみ表示が有効で、指摘が見つかっていない状態です。")
+    ])
+  );
 }
 
 function renderCheckDetail(item) {
@@ -324,7 +367,12 @@ function severityBadge(severity, label) {
 }
 
 function metric(label, value) {
-  return element("div", {}, [
+  const className = {
+    "問題なし": "metric-passed",
+    "指摘あり": "metric-issues_found",
+    "対象外": "metric-not_applicable"
+  }[label] ?? "";
+  return element("div", { className }, [
     element("dt", {}, label),
     element("dd", {}, String(value))
   ]);
