@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: machine-readable-checker-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false

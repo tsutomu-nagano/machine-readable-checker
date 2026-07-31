@@ -44,6 +44,22 @@ curl -X POST http://localhost:8015/api/check-url \
   -d '{"url":"https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040387904&fileKind=0"}'
 ```
 
+## Render への API デプロイ
+
+このリポジトリは `render.yaml` と `Dockerfile` で Render の Docker Web Service としてデプロイできます。
+
+1. Render Dashboard で GitHub リポジトリを接続します。
+2. Blueprint または Web Service 作成時に、このリポジトリの `render.yaml` を使用します。
+3. Cloudflare Pages など別ドメインのフロントエンドから呼び出す場合は、Render の環境変数 `CORS_ALLOWED_ORIGINS` に許可するオリジンをカンマ区切りで設定します。
+
+例:
+
+```text
+CORS_ALLOWED_ORIGINS=https://example.pages.dev,https://example.com
+```
+
+Render が設定する `PORT` 環境変数で起動するため、ポート番号の追加設定は不要です。ヘルスチェックは `/health` を使用します。
+
 ### Docker で起動・テスト
 
 Web UI（フロントエンド）と API は同じコンテナで起動します。

@@ -10,4 +10,4 @@ RUN python -m pip install --no-cache-dir -e ".[test]"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "machine_readable_checker.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn machine_readable_checker.api:app --host 0.0.0.0 --port ${PORT:-8000}"]

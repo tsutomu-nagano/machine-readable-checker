@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from email.message import Message
+import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.error import HTTPError, URLError
@@ -12,6 +13,7 @@ from urllib.request import Request, urlopen
 
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
@@ -25,6 +27,16 @@ DOWNLOAD_TIMEOUT_SECONDS = 30
 USER_AGENT = "machine-readable-checker/0.1"
 
 app = FastAPI(title="Machine-readable checker", version="0.1.0")
+
+allowed_origins = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+if allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

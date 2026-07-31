@@ -1,10 +1,13 @@
 import unittest
 from email.message import Message
+from importlib import reload
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from machine_readable_checker.api import app
+import machine_readable_checker.api as api_module
+
+app = api_module.app
 
 
 class ApiTests(unittest.TestCase):
@@ -80,3 +83,19 @@ class ApiTests(unittest.TestCase):
     def test_rejects_unsupported_upload(self):
         response = self.client.post("/api/check", files={"file": ("table.txt", b"text", "text/plain")})
         self.assertEqual(response.status_code, 400)
+
+    def test_cors_allowed_origins_can_be_configured(self):
+        with patch.dict("os.environ", {"CORS_ALLOWED_ORIGINS": "https://example.pages.dev"}):
+            reloaded_api = reload(api_module)
+            client = TestClient(reloaded_api.app)
+            response = client.options(
+                "/api/check-url",
+                headers={
+                    "Origin": "https://example.pages.dev",
+                    "Access-Control-Request-Method": "POST",
+                },
+            )
+
+        reload(api_module)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["access-control-allow-origin"], "https://example.pages.dev")
