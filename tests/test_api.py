@@ -1,4 +1,6 @@
 import unittest
+from email.message import Message
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -32,6 +34,37 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(checks["headers"], "passed")
         self.assertEqual(checks["xlsx-formulas"], "not_applicable")
         self.assertEqual(payload["summary"]["issues_found"], 0)
+
+    def test_url_download_returns_check_result(self):
+        headers = Message()
+        headers["Content-Type"] = "application/octet-stream"
+        with patch(
+            "machine_readable_checker.api._download_table",
+            return_value={
+                "filename": "file-download",
+                "headers": headers,
+                "content": b"\xe5\xb9\xb4,\xe4\xba\xba\xe5\x8f\xa3\n2025,100\n",
+            },
+        ):
+            response = self.client.post(
+                "/api/check-url",
+                json={
+                    "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040387904&fileKind=0"
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["filename"], "file-download")
+        self.assertEqual(
+            payload["source_url"],
+            "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040387904&fileKind=0",
+        )
+        self.assertTrue(payload["valid"])
+
+    def test_rejects_non_estat_download_url(self):
+        response = self.client.post("/api/check-url", json={"url": "https://example.com/table.csv"})
+        self.assertEqual(response.status_code, 400)
 
     def test_findings_include_a_japanese_e_stat_check_item(self):
         response = self.client.post(

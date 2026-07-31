@@ -7,6 +7,7 @@ e-Stat の「結果表における機械判読可能なデータ作成に関す�
 - CSV / TSV
 - Excel `.xlsx`（セル結合、数式、図形・画像も検出）
 - `.xls` は対象として認識しますが、旧形式のため構造検査は行わず `.xlsx` への変換を案内します。
+- e-Stat の `file-download` URL
 
 ## チェック内容
 
@@ -31,17 +32,27 @@ python -m pip install ".[test]"
 machine-readable-checker-api
 ```
 
-ブラウザで `http://localhost:8000` を開くと、ファイルをアップロードして検査結果を確認できます。
+ブラウザで `http://localhost:8015` を開くと、ファイルアップロードまたは e-Stat の `file-download` URL から検査結果を確認できます。
 
-API は `POST /api/check` です。`multipart/form-data` の `file` フィールドに CSV、TSV、XLSX、XLS を指定すると、検査結果を JSON で返します。アップロード上限は 25 MB です。
+ファイルアップロード API は `POST /api/check` です。`multipart/form-data` の `file` フィールドに CSV、TSV、XLSX、XLS を指定すると、検査結果を JSON で返します。アップロード上限は 25 MB です。
+
+URL 指定 API は `POST /api/check-url` です。JSON の `url` フィールドに e-Stat の `file-download` URL を指定します。
+
+```bash
+curl -X POST http://localhost:8015/api/check-url \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040387904&fileKind=0"}'
+```
 
 ### Docker で起動・テスト
+
+Web UI（フロントエンド）と API は同じコンテナで起動します。
 
 ```bash
 docker compose up --build
 ```
 
-起動後、`http://localhost:8000` を開きます。テストだけを Docker で実行する場合は、別のターミナルで次を実行します。
+起動後、`http://localhost:8015` を開きます。テストだけを Docker で実行する場合は、別のターミナルで次を実行します。
 
 ```bash
 docker compose --profile test run --rm test

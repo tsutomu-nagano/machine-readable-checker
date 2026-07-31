@@ -7,27 +7,73 @@
     <link rel="stylesheet" href="/static/style.css">
   </head>
   <body>
-    <main>
-      <h1>機械判読可能性チェッカー</h1>
-      <p>CSV、TSV、Excel（.xlsx / .xls）をアップロードして検査します。</p>
-      <form id="check-form">
-        <label for="file">検査するファイル</label>
-        <input id="file" name="file" type="file" accept=".csv,.tsv,.xlsx,.xls" required>
-        <button type="submit">チェックする</button>
-      </form>
-      <p id="status" role="status"></p>
-      <section id="result" hidden>
-        <h2>検査結果</h2>
-        <p id="summary"></p>
-        <h3>チェックごとの結果</h3>
-        <ul id="checks" class="checks"></ul>
-        <h3>検出された指摘</h3>
-        <table>
-          <thead><tr><th>重要度</th><th>e-Stat チェック項目</th><th>場所</th><th>セル値</th><th>内容</th></tr></thead>
-          <tbody id="findings"></tbody>
-        </table>
-      </section>
-    </main>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <h1>機械判読可能性チェッカー</h1>
+          <p>CSV、TSV、Excel（.xlsx / .xls）をアップロード、または e-Stat の file-download URL から取得して検査します。</p>
+        </div>
+      </header>
+      <main class="app-layout">
+        <aside class="sidebar" aria-label="検査条件">
+          <form id="check-form">
+            <fieldset class="source-card">
+              <legend>入力ソース</legend>
+              <div class="source-tabs" role="group" aria-label="入力方法">
+                <label>
+                  <input type="radio" name="source" value="file" checked>
+                  ファイル
+                </label>
+                <label>
+                  <input type="radio" name="source" value="url">
+                  e-Stat URL
+                </label>
+              </div>
+              <div class="source-panel" data-source-panel="file">
+                <label for="file">検査するファイル</label>
+                <input id="file" name="file" type="file" accept=".csv,.tsv,.xlsx,.xls">
+                <p class="hint">CSV、TSV、Excel（.xlsx / .xls）を選択してください。</p>
+              </div>
+              <div class="source-panel" data-source-panel="url" hidden>
+                <label for="url">e-Stat file-download URL</label>
+                <input
+                  id="url"
+                  name="url"
+                  type="url"
+                  placeholder="https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040387904&fileKind=0"
+                >
+                <p class="hint">e-Stat のファイルダウンロード URL から取得して検査します。</p>
+              </div>
+            </fieldset>
+            <button type="submit">チェックする</button>
+          </form>
+          <p id="status" role="status"></p>
+        </aside>
+        <section class="result-pane" aria-label="検査結果">
+          <div id="empty-result" class="empty-result">
+            <h2>検査結果</h2>
+            <p>左の入力ソースを指定してチェックを実行すると、ここに結果が表示されます。</p>
+          </div>
+          <section id="result" class="result" hidden>
+            <div id="summary" class="summary-card"></div>
+            <section class="result-section" aria-labelledby="checks-heading">
+              <div class="section-heading">
+                <div>
+                  <h2 id="checks-heading">チェックごとの結果</h2>
+                  <p>e-Stat のチェック項目ごとの状態を一覧できます。</p>
+                </div>
+                <button id="api-json-toggle" class="secondary-button" type="button">API JSON</button>
+              </div>
+              <pre id="api-json" class="json-view" hidden></pre>
+              <div class="checks-layout">
+                <div id="checks" class="checks"></div>
+                <aside id="check-detail" class="check-detail" aria-live="polite"></aside>
+              </div>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
     <script src="/static/app.js"></script>
   </body>
 </html>
