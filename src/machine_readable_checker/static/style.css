@@ -1,9 +1,13 @@
 :root { color-scheme: light; font-family: system-ui, sans-serif; color: #172033; background: #f4f7fb; }
 body { margin: 0; }
 .app-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
-.app-header { position: sticky; top: 0; z-index: 1; padding: 1.1rem 1.5rem; border-bottom: 1px solid #d9e0ea; background: #ffffffee; backdrop-filter: blur(10px); }
+.app-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.5rem; border-bottom: 1px solid #d9e0ea; background: #ffffffee; backdrop-filter: blur(10px); }
+.app-header-text { min-width: 0; }
 .app-header h1 { margin: 0 0 .35rem; font-size: 1.55rem; }
 .app-header p { margin: 0; color: #667085; }
+.app-header-nav { flex: 0 0 auto; }
+.swagger-link { display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 .85rem; border: 1px solid #c8d2e1; border-radius: 6px; color: #1455a3; background: white; font-weight: 700; text-decoration: none; }
+.swagger-link:hover { border-color: #1455a3; background: #f5f9ff; }
 .app-layout { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 1.25rem; max-width: 1400px; width: min(100% - 2rem, 1400px); margin: 1.25rem auto; align-items: start; }
 .sidebar, .result-pane { background: white; border: 1px solid #e4e9f1; border-radius: 14px; box-shadow: 0 4px 20px #17203312; }
 .sidebar { position: sticky; top: 6.25rem; padding: 1rem; }
@@ -85,7 +89,9 @@ legend { font-weight: 700; margin-bottom: .75rem; }
 .json-view { max-height: 28rem; margin: 0; padding: .85rem; overflow: auto; border: 1px solid #d9e0ea; border-radius: 10px; background: #0f172a; color: #e5eefb; font-size: .8rem; line-height: 1.5; white-space: pre; }
 
 @media (max-width: 720px) {
-  .app-header { position: static; padding: 1rem; }
+  .app-header { position: static; flex-wrap: wrap; padding: 1rem; }
+  .app-header-nav { width: 100%; }
+  .swagger-link { justify-content: center; width: 100%; box-sizing: border-box; }
   .app-layout { grid-template-columns: 1fr; width: min(100% - 1rem, 1320px); margin: .5rem auto; }
   .sidebar { position: static; }
   .result-pane { min-height: auto; }
