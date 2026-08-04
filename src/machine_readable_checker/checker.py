@@ -197,6 +197,13 @@ def _check_xlsx(path: Path) -> CheckResult:
             return result
         for sheet in workbook.worksheets:
             for merged_range in sheet.merged_cells.ranges:
+                merged_values = (
+                    sheet.cell(row=row_index, column=column_index).value
+                    for row_index in range(merged_range.min_row, merged_range.max_row + 1)
+                    for column_index in range(merged_range.min_col, merged_range.max_col + 1)
+                )
+                if not any(str(value).strip() for value in merged_values if value is not None):
+                    continue
                 _add(
                     result,
                     "merged-cells",

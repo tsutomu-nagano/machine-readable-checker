@@ -42,6 +42,21 @@ class CheckerTests(unittest.TestCase):
 
         self.assertTrue({"merged-cells", "formulas"} <= {item.code for item in result.findings})
 
+    def test_ignores_empty_merged_cells_in_xlsx(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "empty_merged.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.append(["年", "人口"])
+            sheet.append(["2025", "100"])
+            sheet.merge_cells("C1:D1")
+            workbook.save(path)
+            workbook.close()
+
+            result = check_file(path)
+
+        self.assertNotIn("merged-cells", {item.code for item in result.findings})
+
     def test_findings_include_the_cell_value(self):
         findings = check_rows([["年", "人口"], ["令和 7年", "1,200 人"]]).findings
         values_by_code = {finding.code: finding.value for finding in findings}
