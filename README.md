@@ -1,4 +1,7 @@
+![machine-readable-checker logo](src/machine_readable_checker/static/logo.png)
+
 # machine-readable-checker
+
 
 e-Stat の「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」を参考に、統計表を機械判読しやすい形にするための簡易チェッカーです。
 
