@@ -1,4 +1,6 @@
-![machine-readable-checker logo](src/machine_readable_checker/static/logo.png)
+<p align="center">
+  <img src="src/machine_readable_checker/static/logo.png" alt="machine-readable-checker logo" width="360">
+</p>
 
 # machine-readable-checker
 
