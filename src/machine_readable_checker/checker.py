@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import csv
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Iterable
 
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 from openpyxl.utils.exceptions import InvalidFileException
+import xlrd
 FORBIDDEN_LAYOUT = re.compile(r"[\r\n]| {2,}")
 DEPENDENT_WORDS = re.compile(r"[①②③④⑤⑥⑦⑧⑨⑩㈱㈲㍾㍽㍼㍻]" )
 NUMERIC_WITH_DECORATION = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*(?:[%％円人件戸本個台㎏kg\*†])\s*$")
@@ -71,6 +73,7 @@ class Finding:
     code: str
     message: str
     severity: str = "warning"
+    sheet: str | None = None
     row: int | None = None
     column: int | None = None
     value: str | None = None
@@ -170,15 +173,16 @@ def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
     suffix = Path(path).suffix.lower()
     if suffix not in {".csv", ".tsv", ".xlsx", ".xls"} and ":" in path:
         suffix = Path(path.rsplit(":", 1)[0]).suffix.lower()
-    has_table = suffix in {".csv", ".tsv", ".xlsx"}
+    has_table = suffix in {".csv", ".tsv", ".xlsx", ".xls"}
     is_csv = suffix in {".csv", ".tsv"}
+    is_excel = suffix in {".xlsx", ".xls"}
     present_codes = {finding.code for finding in findings}
     statuses: list[dict] = []
     for check_id, label, codes, scope in CHECK_GROUPS:
         applicable = (
             scope == "all"
             or scope == "table" and has_table
-            or scope == "xlsx" and suffix == ".xlsx"
+            or scope == "xlsx" and is_excel
             or scope == "csv" and is_csv
         )
         detected = sorted(set(codes) & present_codes) if applicable else []
@@ -199,11 +203,12 @@ def _add(
     code: str,
     message: str,
     severity: str = "warning",
+    sheet: str | None = None,
     row: int | None = None,
     column: int | None = None,
     value: str | None = None,
 ) -> None:
-    result.findings.append(Finding(code, message, severity, row, column, value))
+    result.findings.append(Finding(code, message, severity, sheet, row, column, value))
 
 
 def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> CheckResult:
@@ -223,9 +228,9 @@ def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> Chec
     for col, name in enumerate(header, 1):
         clean = name.strip()
         if not clean:
-            _add(result, "missing-header", "項目名を省略しないでください。", "error", first + 1, col, name)
+            _add(result, "missing-header", "項目名を省略しないでください。", "error", row=first + 1, column=col, value=name)
         elif clean in names:
-            _add(result, "duplicate-header", f"項目名「{clean}」が重複しています。", "error", first + 1, col, name)
+            _add(result, "duplicate-header", f"項目名「{clean}」が重複しています。", "error", row=first + 1, column=col, value=name)
         else:
             names[clean] = col
 
@@ -236,10 +241,10 @@ def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> Chec
             gap_seen = True
             continue
         if gap_seen:
-            _add(result, "split-table", "空白行で表を分断しないでください。", "warning", index)
+            _add(result, "split-table", "空白行で表を分断しないでください。", "warning", row=index)
             gap_seen = False
         if len(row) != width:
-            _add(result, "inconsistent-columns", "データ行の列数が項目名の列数と一致しません。", "error", index)
+            _add(result, "inconsistent-columns", "データ行の列数が項目名の列数と一致しません。", "error", row=index)
         body_rows.append((index, row))
         for col, value in enumerate(row, 1):
             _check_cell(result, value, index, col)
@@ -251,7 +256,7 @@ def _check_table_context(result: CheckResult, header: list[str], body_rows: list
     normalized_header = [cell.strip() for cell in header]
     for row_index, row in body_rows:
         if [cell.strip() for cell in row[: len(normalized_header)]] == normalized_header:
-            _add(result, "multiple-table-sets", "１ファイル内に変数とデータのセットを複数掲載しないでください。", "warning", row_index)
+            _add(result, "multiple-table-sets", "１ファイル内に変数とデータのセットを複数掲載しないでください。", "warning", row=row_index)
             break
 
     for col, raw_name in enumerate(header, 1):
@@ -263,14 +268,14 @@ def _check_table_context(result: CheckResult, header: list[str], body_rows: list
         numeric_count = sum(_is_plain_numeric(value) for value in non_empty_values)
         special_count = sum(bool(SPECIAL_SYMBOL.match(value)) for value in non_empty_values)
         if UNIT_WORDS.search(name) and not UNIT_MARK.search(name) and numeric_count >= max(2, len(non_empty_values) // 2):
-            _add(result, "missing-unit", "単位が必要な項目は、項目名と同じフィールドに単位を記載してください。", "warning", 1, col, name)
+            _add(result, "missing-unit", "単位が必要な項目は、項目名と同じフィールドに単位を記載してください。", "warning", row=1, column=col, value=name)
         if numeric_count and special_count and any(not value for value in column_values):
             first_empty_row = next(row_index for row_index, row in body_rows if col <= len(row) and not row[col - 1].strip())
-            _add(result, "ambiguous-empty-value", "数値列の空欄は、0、***、X など意味が分かる特殊記号で表してください。", "warning", first_empty_row, col)
+            _add(result, "ambiguous-empty-value", "数値列の空欄は、0、***、X など意味が分かる特殊記号で表してください。", "warning", row=first_empty_row, column=col)
         if AREA_HEADER.search(name):
             for row_index, row in body_rows:
                 if col <= len(row) and row[col - 1].strip() in AREA_ABBREVIATIONS:
-                    _add(result, "area-abbreviation", "地域は標準地域コード又は地域名称で表記してください。", "warning", row_index, col, row[col - 1])
+                    _add(result, "area-abbreviation", "地域は標準地域コード又は地域名称で表記してください。", "warning", row=row_index, column=col, value=row[col - 1])
                     break
 
 
@@ -282,13 +287,13 @@ def _check_cell(result: CheckResult, value: str, row: int, column: int) -> None:
     if not value:
         return
     if FORBIDDEN_LAYOUT.search(value):
-        _add(result, "layout-whitespace", "空白や改行で体裁を整えず、列を分けてください。", "warning", row, column, value)
+        _add(result, "layout-whitespace", "空白や改行で体裁を整えず、列を分けてください。", "warning", row=row, column=column, value=value)
     if DEPENDENT_WORDS.search(value):
-        _add(result, "dependent-character", "機種依存文字は使用しないでください。", "warning", row, column, value)
+        _add(result, "dependent-character", "機種依存文字は使用しないでください。", "warning", row=row, column=column, value=value)
     if NUMERIC_WITH_DECORATION.match(value):
-        _add(result, "decorated-number", "数値・単位・注記は別の列にしてください。", "warning", row, column, value)
+        _add(result, "decorated-number", "数値・単位・注記は別の列にしてください。", "warning", row=row, column=column, value=value)
     if ERA_ONLY.match(value.strip()):
-        _add(result, "era-only-date", "時間軸は西暦を併記してください。", "warning", row, column, value)
+        _add(result, "era-only-date", "時間軸は西暦を併記してください。", "warning", row=row, column=column, value=value)
 
 
 def check_file(path: str | Path) -> CheckResult:
@@ -300,11 +305,10 @@ def check_file(path: str | Path) -> CheckResult:
             return check_rows(csv.reader(handle, delimiter=delimiter), str(file_path))
     if suffix == ".xlsx":
         return _check_xlsx(file_path)
-    result = CheckResult(str(file_path))
     if suffix == ".xls":
-        _add(result, "legacy-xls", "古い .xls 形式は構造検査できません。.xlsx へ変換してください。", "warning")
-    else:
-        _add(result, "unsupported-format", "CSV、TSV、XLSX、XLS のいずれかを指定してください。", "error")
+        return _check_xls(file_path)
+    result = CheckResult(str(file_path))
+    _add(result, "unsupported-format", "CSV、TSV、XLSX、XLS のいずれかを指定してください。", "error")
     return result
 
 
@@ -328,20 +332,60 @@ def _check_xlsx(path: Path) -> CheckResult:
                     result,
                     "merged-cells",
                     "セル結合は使用しないでください。",
+                    sheet=sheet.title,
                     row=merged_range.min_row,
                     column=merged_range.min_col,
                     value=str(merged_range),
                 )
             if sheet._images or sheet._charts:
-                _add(result, "xlsx-object", "図形・画像等のオブジェクトではなくセルにデータを入力してください。")
+                _add(result, "xlsx-object", "図形・画像等のオブジェクトではなくセルにデータを入力してください。", sheet=sheet.title)
             for row in sheet.iter_rows():
                 for cell in row:
                     if cell.data_type == "f":
-                        _add(result, "formulas", "結果表は数式ではなく値として出力してください。", row=cell.row, column=cell.column, value=str(cell.value))
+                        _add(result, "formulas", "結果表は数式ではなく値として出力してください。", sheet=sheet.title, row=cell.row, column=cell.column, value=str(cell.value))
             rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
             sheet_result = check_rows(rows, f"{path}:{sheet.title}")
-            result.findings.extend(sheet_result.findings)
+            result.findings.extend(replace(finding, sheet=sheet.title) for finding in sheet_result.findings)
         workbook.close()
     except (OSError, InvalidFileException, ValueError) as error:
         _add(result, "invalid-xlsx", f"XLSX を読み取れません: {error}", "error")
     return result
+
+
+def _check_xls(path: Path) -> CheckResult:
+    result = CheckResult(str(path))
+    try:
+        workbook = xlrd.open_workbook(path, formatting_info=True)
+        if not workbook.nsheets:
+            _add(result, "empty-workbook", "ワークシートがありません。", "error")
+            return result
+        for sheet in workbook.sheets():
+            for row_start, row_end, column_start, column_end in sheet.merged_cells:
+                merged_values = (
+                    sheet.cell_value(row_index, column_index)
+                    for row_index in range(row_start, row_end)
+                    for column_index in range(column_start, column_end)
+                )
+                if not any(str(value).strip() for value in merged_values if value not in (None, "")):
+                    continue
+                _add(
+                    result,
+                    "merged-cells",
+                    "セル結合は使用しないでください。",
+                    sheet=sheet.name,
+                    row=row_start + 1,
+                    column=column_start + 1,
+                    value=_format_xls_range(row_start, row_end, column_start, column_end),
+                )
+            rows = [[sheet.cell_value(row_index, column_index) for column_index in range(sheet.ncols)] for row_index in range(sheet.nrows)]
+            sheet_result = check_rows(rows, f"{path}:{sheet.name}")
+            result.findings.extend(replace(finding, sheet=sheet.name) for finding in sheet_result.findings)
+    except (OSError, xlrd.XLRDError, ValueError) as error:
+        _add(result, "invalid-xlsx", f"XLS を読み取れません: {error}", "error")
+    return result
+
+
+def _format_xls_range(row_start: int, row_end: int, column_start: int, column_end: int) -> str:
+    start = f"{get_column_letter(column_start + 1)}{row_start + 1}"
+    end = f"{get_column_letter(column_end)}{row_end}"
+    return f"{start}:{end}"

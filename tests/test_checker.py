@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from openpyxl import Workbook
+import xlwt
 
 from machine_readable_checker.checker import check_file, check_rows
 
@@ -69,6 +70,51 @@ class CheckerTests(unittest.TestCase):
             result = check_file(path)
 
         self.assertNotIn("merged-cells", {item.code for item in result.findings})
+
+    def test_xlsx_findings_include_sheet_name(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "multi_sheet.xlsx"
+            workbook = Workbook()
+            first_sheet = workbook.active
+            first_sheet.title = "人口"
+            first_sheet.append(["年", "人口"])
+            first_sheet.append(["2025", "1,200 人"])
+            second_sheet = workbook.create_sheet("世帯")
+            second_sheet.append(["年", "世帯数"])
+            second_sheet.append(["2025", "100"])
+            second_sheet["B2"] = "=50+50"
+            workbook.save(path)
+            workbook.close()
+
+            result = check_file(path)
+
+        sheet_by_code = {finding.code: finding.sheet for finding in result.findings}
+        self.assertEqual(sheet_by_code["decorated-number"], "人口")
+        self.assertEqual(sheet_by_code["formulas"], "世帯")
+
+    def test_reads_xls_with_xlrd_and_includes_sheet_name(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "table.xls"
+            workbook = xlwt.Workbook()
+            first_sheet = workbook.add_sheet("人口")
+            first_sheet.write(0, 0, "年")
+            first_sheet.write(0, 1, "人口")
+            first_sheet.write(1, 0, "2025")
+            first_sheet.write(1, 1, "1,200 人")
+            second_sheet = workbook.add_sheet("世帯")
+            second_sheet.write_merge(0, 0, 1, 2, "結合項目")
+            second_sheet.write(1, 0, "2025")
+            second_sheet.write(1, 1, "100")
+            workbook.save(path)
+
+            result = check_file(path)
+
+        sheet_by_code = {finding.code: finding.sheet for finding in result.findings}
+        self.assertEqual(sheet_by_code["decorated-number"], "人口")
+        self.assertEqual(sheet_by_code["merged-cells"], "世帯")
+        checks = {item["id"]: item["status"] for item in result.as_dict()["checks"]}
+        self.assertEqual(checks["estat-2-3"], "issues_found")
+        self.assertEqual(checks["estat-4-6"], "not_applicable")
 
     def test_findings_include_the_cell_value(self):
         findings = check_rows([["年", "人口"], ["令和 7年", "1,200 人"]]).findings

@@ -483,6 +483,7 @@ function renderFindingCard(finding) {
   const location = finding.row ? `${finding.row} 行${finding.column ? ` ${finding.column} 列` : ""}` : "場所指定なし";
   const metaItems = [
     severityBadge(finding.severity, severityLabels[finding.severity] ?? finding.severity),
+    ...(finding.sheet ? [element("span", {}, `シート: ${finding.sheet}`)] : []),
     element("span", {}, location)
   ];
   if (finding.value) metaItems.push(element("span", {}, `セル値: ${finding.value}`));
