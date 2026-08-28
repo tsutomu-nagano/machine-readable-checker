@@ -1,6 +1,8 @@
 import unittest
+import struct
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from openpyxl import Workbook
 import xlwt
@@ -119,6 +121,30 @@ class CheckerTests(unittest.TestCase):
         checks = {item["id"]: item["status"] for item in result.as_dict()["checks"]}
         self.assertEqual(checks["estat-2-3"], "issues_found")
         self.assertEqual(checks["estat-4-6"], "not_applicable")
+
+    def test_xls_reader_assertion_is_reported_as_invalid_file(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "broken.xls"
+            path.write_bytes(b"not a valid xls")
+
+            with patch("machine_readable_checker.checker.xlrd.open_workbook", side_effect=AssertionError()):
+                result = check_file(path)
+
+        finding = result.findings[0]
+        self.assertEqual(finding.code, "invalid-xlsx")
+        self.assertEqual(finding.severity, "error")
+
+    def test_xls_reader_struct_error_is_reported_as_invalid_file(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "broken.xls"
+            path.write_bytes(b"not a valid xls")
+
+            with patch("machine_readable_checker.checker.xlrd.open_workbook", side_effect=struct.error("unpack requires a buffer of 2 bytes")):
+                result = check_file(path)
+
+        finding = result.findings[0]
+        self.assertEqual(finding.code, "invalid-xlsx")
+        self.assertEqual(finding.severity, "error")
 
     def test_findings_include_the_cell_value(self):
         findings = check_rows([["年", "人口"], ["令和 7年", "1,200 人"]]).findings

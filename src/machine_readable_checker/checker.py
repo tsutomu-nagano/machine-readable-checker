@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import re
+import struct
 from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Iterable
@@ -409,7 +410,7 @@ def _check_xls(path: Path) -> CheckResult:
             rows = [[sheet.cell_value(row_index, column_index) for column_index in range(sheet.ncols)] for row_index in range(sheet.nrows)]
             sheet_result = check_rows(rows, f"{path}:{sheet.name}")
             result.findings.extend(replace(finding, sheet=sheet.name) for finding in sheet_result.findings)
-    except (OSError, xlrd.XLRDError, ValueError) as error:
+    except (AssertionError, OSError, struct.error, xlrd.XLRDError, ValueError) as error:
         _add(result, "invalid-xlsx", f"XLS を読み取れません: {error}", "error")
     return result
 

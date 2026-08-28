@@ -295,7 +295,7 @@ form.addEventListener("submit", async (event) => {
           body: JSON.stringify({ url })
         })
       : await fetch("/api/check", { method: "POST", body: formData });
-    const data = await response.json();
+    const data = await parseResponse(response);
     if (!response.ok) throw new Error(data.detail || "検査に失敗しました。");
     status.textContent = "完了しました。";
     renderSummary(data);
@@ -307,6 +307,15 @@ form.addEventListener("submit", async (event) => {
     status.textContent = error.message;
   }
 });
+
+async function parseResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+  const text = await response.text();
+  return { detail: text || "検査に失敗しました。" };
+}
 
 function renderSummary(data) {
   summary.className = `summary-card ${data.valid ? "summary-valid" : "summary-invalid"}`;
