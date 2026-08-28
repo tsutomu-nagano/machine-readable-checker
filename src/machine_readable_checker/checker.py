@@ -14,7 +14,7 @@ FORBIDDEN_LAYOUT = re.compile(r"[\r\n]| {2,}")
 DEPENDENT_WORDS = re.compile(r"[①②③④⑤⑥⑦⑧⑨⑩㈱㈲㍾㍽㍼㍻]" )
 NUMERIC_WITH_DECORATION = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*(?:[%％円人件戸本個台㎏kg\*†])\s*$")
 NUMERIC_LIKE = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*$")
-SPECIAL_SYMBOL = re.compile(r"^(?:0|\*\*\*|X)$")
+SPECIAL_SYMBOL = re.compile(r"^(?:\*\*\*|X)$")
 ERA_ONLY = re.compile(r"^(?:令和|平成|昭和|大正|明治)\s*\d+(?:年)?$")
 UNIT_WORDS = re.compile(r"(?:数|量|額|率|割合|人口|面積|密度|単価|金額|価格|本数|件数|人数|戸数)$")
 UNIT_MARK = re.compile(r"[（(].+[）)]")
@@ -90,10 +90,11 @@ class CheckResult:
 
     def as_dict(self) -> dict:
         checks = _check_statuses(self.path, self.findings)
+        suffix = _table_suffix(self.path)
         return {
             "path": self.path,
             "valid": self.valid,
-            "findings": [_finding_as_dict(item) for item in self.findings],
+            "findings": [_finding_as_dict(item, suffix) for item in self.findings],
             "checks": checks,
             "summary": {
                 "issues_found": sum(item["status"] == "issues_found" for item in checks),
@@ -103,12 +104,19 @@ class CheckResult:
         }
 
 
-# e-Stat「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」の全チェック項目。
-CHECK_ITEM_REFERENCES = {
+COMMON_CHECK_ITEM_REFERENCES = {
     "unsupported-format": "チェック項目１ ファイル形式は Excel か CSV となっているか",
     "legacy-xls": "チェック項目１ ファイル形式は Excel か CSV となっているか",
     "invalid-xlsx": "チェック項目１ ファイル形式は Excel か CSV となっているか",
     "empty-workbook": "チェック項目１ ファイル形式は Excel か CSV となっているか",
+    "merged-cells": "チェック項目２-３ セルの結合をしていないか",
+    "formulas": "チェック項目２-６ 数式を使用している場合は、数値データに修正しているか",
+    "xlsx-object": "チェック項目２-７ オブジェクトを使用していないか",
+}
+
+
+# e-Stat「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」の検査項目。
+CSV_CHECK_ITEM_REFERENCES = {
     "empty-table": "チェック項目４-１ 変数行から始まり、次行からデータ入力がされているか",
     "missing-header": "チェック項目４-６ 項目名等を省略していないか",
     "duplicate-header": "チェック項目４-６ 項目名等を省略していないか",
@@ -123,15 +131,31 @@ CHECK_ITEM_REFERENCES = {
     "area-abbreviation": "チェック項目４-10 地域コード又は地域名称が表記されているか",
     "ambiguous-empty-value": "チェック項目４-11 数値データの同一列内に特殊記号（秘匿等）が含まれる場合",
     "multiple-table-sets": "チェック項目４-14 １ファイル内に変数とデータのセットが複数掲載されていないか",
-    "merged-cells": "チェック項目２-３ セルの結合をしていないか",
-    "formulas": "チェック項目２-６ 数式を使用している場合は、数値データに修正しているか",
-    "xlsx-object": "チェック項目２-７ オブジェクトを使用していないか",
 }
 
 
-def _finding_as_dict(finding: Finding) -> dict:
+EXCEL_CHECK_ITEM_REFERENCES = {
+    "empty-table": "チェック項目３-１ データが分断されていないか",
+    "missing-header": "チェック項目２-５ 項目名等を省略していないか",
+    "duplicate-header": "チェック項目２-５ 項目名等を省略していないか",
+    "inconsistent-columns": "チェック項目２-１ １セル１データとなっているか",
+    "leading-empty-rows": "チェック項目３-１ データが分断されていないか",
+    "split-table": "チェック項目３-１ データが分断されていないか",
+    "layout-whitespace": "チェック項目２-４ スペースや改行等で体裁を整えていないか",
+    "dependent-character": "チェック項目２-９ 機種依存文字を使用していないか。",
+    "decorated-number": "チェック項目２-２ 数値データは数値属性とし、文字列を含まないこと",
+    "era-only-date": "チェック項目２-10 e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか",
+    "missing-unit": "チェック項目２-８ データの単位を記載しているか",
+    "area-abbreviation": "チェック項目２-11 地域コード又は地域名称が表記されているか",
+    "ambiguous-empty-value": "チェック項目２-12 数値データの同一列内に特殊記号（秘匿等）が含まれる場合",
+    "multiple-table-sets": "チェック項目３-２ １シートに複数の表が掲載されていないか",
+}
+
+
+def _finding_as_dict(finding: Finding, suffix: str) -> dict:
     result = asdict(finding)
-    result["check_item"] = CHECK_ITEM_REFERENCES.get(finding.code)
+    references = EXCEL_CHECK_ITEM_REFERENCES if suffix in {".xlsx", ".xls"} else CSV_CHECK_ITEM_REFERENCES
+    result["check_item"] = COMMON_CHECK_ITEM_REFERENCES.get(finding.code) or references.get(finding.code)
     return result
 
 
@@ -170,9 +194,7 @@ CHECK_GROUPS = (
 
 def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
     """Return every check outcome, including checks with no detected issue."""
-    suffix = Path(path).suffix.lower()
-    if suffix not in {".csv", ".tsv", ".xlsx", ".xls"} and ":" in path:
-        suffix = Path(path.rsplit(":", 1)[0]).suffix.lower()
+    suffix = _table_suffix(path)
     has_table = suffix in {".csv", ".tsv", ".xlsx", ".xls"}
     is_csv = suffix in {".csv", ".tsv"}
     is_excel = suffix in {".xlsx", ".xls"}
@@ -196,6 +218,13 @@ def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
             }
         )
     return statuses
+
+
+def _table_suffix(path: str) -> str:
+    suffix = Path(path).suffix.lower()
+    if suffix not in {".csv", ".tsv", ".xlsx", ".xls"} and ":" in path:
+        suffix = Path(path.rsplit(":", 1)[0]).suffix.lower()
+    return suffix
 
 
 def _add(
@@ -271,7 +300,7 @@ def _check_table_context(result: CheckResult, header: list[str], body_rows: list
             _add(result, "missing-unit", "単位が必要な項目は、項目名と同じフィールドに単位を記載してください。", "warning", row=1, column=col, value=name)
         if numeric_count and special_count and any(not value for value in column_values):
             first_empty_row = next(row_index for row_index, row in body_rows if col <= len(row) and not row[col - 1].strip())
-            _add(result, "ambiguous-empty-value", "数値列の空欄は、0、***、X など意味が分かる特殊記号で表してください。", "warning", row=first_empty_row, column=col)
+            _add(result, "ambiguous-empty-value", "数値列の空欄は、***、X など意味が分かる特殊記号で表してください。", "warning", row=first_empty_row, column=col)
         if AREA_HEADER.search(name):
             for row_index, row in body_rows:
                 if col <= len(row) and row[col - 1].strip() in AREA_ABBREVIATIONS:

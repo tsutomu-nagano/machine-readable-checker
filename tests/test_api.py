@@ -69,6 +69,31 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(checks["estat-4-6"]["status"], "not_applicable")
         self.assertEqual(checks["estat-4-6"]["finding_codes"], [])
 
+    def test_xlsx_finding_check_item_uses_excel_reference(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["年", ""])
+        sheet.append(["2025", "100"])
+        buffer = BytesIO()
+        workbook.save(buffer)
+        workbook.close()
+        buffer.seek(0)
+
+        response = self.client.post(
+            "/api/check",
+            files={
+                "file": (
+                    "table.xlsx",
+                    buffer.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        finding = next(item for item in response.json()["findings"] if item["code"] == "missing-header")
+        self.assertEqual(finding["check_item"], "チェック項目２-５ 項目名等を省略していないか")
+
     def test_url_download_returns_check_result(self):
         headers = Message()
         headers["Content-Type"] = "application/octet-stream"

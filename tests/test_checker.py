@@ -39,6 +39,10 @@ class CheckerTests(unittest.TestCase):
         )
         self.assertTrue({"missing-unit", "area-abbreviation", "ambiguous-empty-value", "multiple-table-sets"} <= result)
 
+    def test_zero_is_not_treated_as_a_special_symbol_for_empty_numeric_values(self):
+        result = codes([["年", "人口"], ["2025", "100"], ["2026", "0"], ["2027", ""]])
+        self.assertNotIn("ambiguous-empty-value", result)
+
     def test_reads_xlsx_with_openpyxl_and_detects_workbook_features(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "table.xlsx"
