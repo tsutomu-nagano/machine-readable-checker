@@ -13,7 +13,7 @@ def codes(rows):
 
 class CheckerTests(unittest.TestCase):
     def test_valid_table_has_no_findings(self):
-        self.assertEqual(codes([["年", "人口"], ["2025", "1234"]]), set())
+        self.assertEqual(codes([["年", "人口（人）"], ["2025", "1234"]]), set())
 
 
     def test_checks_headers_and_structure(self):
@@ -22,8 +22,21 @@ class CheckerTests(unittest.TestCase):
 
 
     def test_checks_decorated_values_and_layout(self):
-        result = codes([["年", "人口"], ["令和 7年", "1,200 人"], ["2026", "A  B"]])
+        result = codes([["年", "人口（人）"], ["令和 7年", "1,200 人"], ["2026", "A  B"]])
         self.assertTrue({"era-only-date", "decorated-number", "layout-whitespace"} <= result)
+
+    def test_checks_missing_units_area_abbreviations_empty_numeric_values_and_multiple_sets(self):
+        result = codes(
+            [
+                ["都道府県", "人口"],
+                ["青森", "100"],
+                ["岩手県", ""],
+                ["宮城県", "***"],
+                ["都道府県", "人口"],
+                ["福島県", "200"],
+            ]
+        )
+        self.assertTrue({"missing-unit", "area-abbreviation", "ambiguous-empty-value", "multiple-table-sets"} <= result)
 
     def test_reads_xlsx_with_openpyxl_and_detects_workbook_features(self):
         with TemporaryDirectory() as directory:

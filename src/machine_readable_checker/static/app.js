@@ -34,81 +34,207 @@ const severityIcons = {
 
 const estatCheckItems = [
   {
+    id: "estat-1",
+    number: "チェック項目１",
+    title: "ファイル形式は Excel か CSV となっているか",
+    codes: ["unsupported-format", "invalid-xlsx", "empty-workbook", "legacy-xls"],
+    sourceCheckIds: ["estat-1"]
+  },
+  {
+    id: "estat-2-1",
+    number: "チェック項目２－１",
+    title: "１セル１データとなっているか",
+    codes: [],
+    sourceCheckIds: ["estat-2-1"]
+  },
+  {
     id: "estat-2-2",
     number: "チェック項目２－２",
     title: "数値データは数値属性とし、文字列を含まないこと",
     codes: ["decorated-number"],
-    sourceCheckIds: ["numbers"]
+    sourceCheckIds: ["estat-2-2"]
   },
   {
     id: "estat-2-3",
     number: "チェック項目２－３",
     title: "セルの結合をしていないか",
     codes: ["merged-cells"],
-    sourceCheckIds: ["xlsx-merged-cells"]
+    sourceCheckIds: ["estat-2-3"]
   },
   {
     id: "estat-2-4",
     number: "チェック項目２－４",
     title: "スペースや改行等で体裁を整えていないか",
     codes: ["layout-whitespace"],
-    sourceCheckIds: ["layout"]
+    sourceCheckIds: ["estat-2-4"]
   },
   {
     id: "estat-2-5",
     number: "チェック項目２－５",
     title: "項目名等を省略していないか",
     codes: ["missing-header", "duplicate-header"],
-    sourceCheckIds: ["headers"]
+    sourceCheckIds: ["estat-2-5"]
   },
   {
     id: "estat-2-6",
     number: "チェック項目２－６",
     title: "数式を使用している場合は、数値データに修正しているか",
     codes: ["formulas"],
-    sourceCheckIds: ["xlsx-formulas"]
+    sourceCheckIds: ["estat-2-6"]
   },
   {
     id: "estat-2-7",
     number: "チェック項目２－７",
-    title: "図形・画像等のオブジェクトを使用していないか",
+    title: "オブジェクトを使用していないか",
     codes: ["xlsx-object"],
-    sourceCheckIds: ["xlsx-objects"]
+    sourceCheckIds: ["estat-2-7"]
+  },
+  {
+    id: "estat-2-8",
+    number: "チェック項目２－８",
+    title: "データの単位を記載しているか",
+    codes: ["missing-unit"],
+    sourceCheckIds: ["estat-2-8"]
   },
   {
     id: "estat-2-9",
     number: "チェック項目２－９",
     title: "機種依存文字を使用していないか",
     codes: ["dependent-character"],
-    sourceCheckIds: ["characters"]
+    sourceCheckIds: ["estat-2-9"]
   },
   {
     id: "estat-2-10",
     number: "チェック項目２－１０",
-    title: "西暦表記又は和暦に西暦の併記がされているか",
+    title: "e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか",
     codes: ["era-only-date"],
-    sourceCheckIds: ["dates"]
+    sourceCheckIds: ["estat-2-10"]
+  },
+  {
+    id: "estat-2-11",
+    number: "チェック項目２－１１",
+    title: "地域コード又は地域名称が表記されているか",
+    codes: ["area-abbreviation"],
+    sourceCheckIds: ["estat-2-11"]
+  },
+  {
+    id: "estat-2-12",
+    number: "チェック項目２－１２",
+    title: "数値データの同一列内に特殊記号（秘匿等）が含まれる場合",
+    codes: ["ambiguous-empty-value"],
+    sourceCheckIds: ["estat-2-12"]
+  },
+  {
+    id: "estat-3-1",
+    number: "チェック項目３－１",
+    title: "データが分断されていないか",
+    codes: ["leading-empty-rows", "split-table"],
+    sourceCheckIds: ["estat-3-1"]
+  },
+  {
+    id: "estat-3-2",
+    number: "チェック項目３－２",
+    title: "１シートに複数の表が掲載されていないか",
+    codes: ["multiple-table-sets"],
+    sourceCheckIds: ["estat-3-2"]
+  },
+  {
+    id: "estat-4-1",
+    number: "チェック項目４－１",
+    title: "変数行から始まり、次行からデータ入力がされているか",
+    codes: ["empty-table", "leading-empty-rows"],
+    sourceCheckIds: ["estat-4-1"]
+  },
+  {
+    id: "estat-4-2",
+    number: "チェック項目４－２",
+    title: "１フィールド１データとなっているか",
+    codes: ["layout-whitespace"],
+    sourceCheckIds: ["estat-4-2"]
+  },
+  {
+    id: "estat-4-3",
+    number: "チェック項目４－３",
+    title: "数値データは数値属性とし、文字列を含まないこと",
+    codes: ["decorated-number"],
+    sourceCheckIds: ["estat-4-3"]
+  },
+  {
+    id: "estat-4-4",
+    number: "チェック項目４－４",
+    title: "スペースを使っていないか",
+    codes: ["layout-whitespace"],
+    sourceCheckIds: ["estat-4-4"]
   },
   {
     id: "estat-4-5",
     number: "チェック項目４－５",
     title: "１行１データで表現されているか",
     codes: ["inconsistent-columns"],
-    sourceCheckIds: ["table-structure"]
+    sourceCheckIds: ["estat-4-5"]
+  },
+  {
+    id: "estat-4-6",
+    number: "チェック項目４－６",
+    title: "項目名等を省略していないか",
+    codes: ["missing-header", "duplicate-header"],
+    sourceCheckIds: ["estat-4-6"]
+  },
+  {
+    id: "estat-4-7",
+    number: "チェック項目４－７",
+    title: "データの単位を記載しているか",
+    codes: ["missing-unit"],
+    sourceCheckIds: ["estat-4-7"]
+  },
+  {
+    id: "estat-4-8",
+    number: "チェック項目４－８",
+    title: "機種依存文字を使用していないか",
+    codes: ["dependent-character"],
+    sourceCheckIds: ["estat-4-8"]
+  },
+  {
+    id: "estat-4-9",
+    number: "チェック項目４－９",
+    title: "e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか",
+    codes: ["era-only-date"],
+    sourceCheckIds: ["estat-4-9"]
+  },
+  {
+    id: "estat-4-10",
+    number: "チェック項目４－１０",
+    title: "地域コード又は地域名称が表記されているか",
+    codes: ["area-abbreviation"],
+    sourceCheckIds: ["estat-4-10"]
+  },
+  {
+    id: "estat-4-11",
+    number: "チェック項目４－１１",
+    title: "数値データの同一列内に特殊記号（秘匿等）が含まれる場合",
+    codes: ["ambiguous-empty-value"],
+    sourceCheckIds: ["estat-4-11"]
+  },
+  {
+    id: "estat-4-12",
+    number: "チェック項目４－１２",
+    title: "各フィールドの値をダブルコーテーション（“）で囲んでいるか",
+    codes: [],
+    sourceCheckIds: ["estat-4-12"]
   },
   {
     id: "estat-4-13",
     number: "チェック項目４－１３",
     title: "データが分断されていないか",
     codes: ["leading-empty-rows", "split-table"],
-    sourceCheckIds: ["table-structure"]
+    sourceCheckIds: ["estat-4-13"]
   },
   {
-    id: "file-format",
-    number: "その他",
-    title: "ファイル形式・読み取り",
-    codes: ["unsupported-format", "invalid-xlsx", "empty-workbook", "empty-table", "legacy-xls"],
-    sourceCheckIds: ["file-format"]
+    id: "estat-4-14",
+    number: "チェック項目４－１４",
+    title: "１ファイル内に変数とデータのセットが複数掲載されていないか",
+    codes: ["multiple-table-sets"],
+    sourceCheckIds: ["estat-4-14"]
   }
 ];
 
@@ -200,18 +326,25 @@ function renderSummary(data) {
 
 function renderCheckItems(sourceChecks, allFindings) {
   const sourceChecksById = new Map(sourceChecks.map((check) => [check.id, check]));
-  currentCheckItems = estatCheckItems.map((item) => {
-    const relatedFindings = allFindings.filter((finding) => item.codes.includes(finding.code));
+  currentCheckItems = estatCheckItems.flatMap((item) => {
+    const applicableSourceChecks = item.sourceCheckIds
+      .map((id) => sourceChecksById.get(id))
+      .filter((check) => check && check.status !== "not_applicable");
+    const relatedFindingCodes = new Set(applicableSourceChecks.flatMap((check) => check.finding_codes ?? []));
+    const relatedFindings = allFindings.filter((finding) => relatedFindingCodes.has(finding.code));
     const sourceStatuses = item.sourceCheckIds
       .map((id) => sourceChecksById.get(id)?.status)
       .filter(Boolean);
+    if (!relatedFindings.length && sourceStatuses.length && sourceStatuses.every((sourceStatus) => sourceStatus === "not_applicable")) {
+      return [];
+    }
     const status = relatedFindings.length
       ? "issues_found"
       : sourceStatuses.length && sourceStatuses.every((sourceStatus) => sourceStatus === "not_applicable")
         ? "not_applicable"
         : "passed";
     const detail = status === "issues_found" ? `指摘あり ${relatedFindings.length}件` : statusLabels[status];
-    return { ...item, relatedFindings, status, detail };
+    return [{ ...item, relatedFindings, status, detail }];
   });
   selectedCheckItemId = currentCheckItems.find((item) => item.status === "issues_found")?.id ?? currentCheckItems[0]?.id ?? "";
   renderVisibleCheckItems();

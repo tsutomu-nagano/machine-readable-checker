@@ -10,8 +10,60 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 FORBIDDEN_LAYOUT = re.compile(r"[\r\n]| {2,}")
 DEPENDENT_WORDS = re.compile(r"[①②③④⑤⑥⑦⑧⑨⑩㈱㈲㍾㍽㍼㍻]" )
-NUMERIC_WITH_DECORATION = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*(?:[%％円人件戸\*†])\s*$")
+NUMERIC_WITH_DECORATION = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*(?:[%％円人件戸本個台㎏kg\*†])\s*$")
+NUMERIC_LIKE = re.compile(r"^\s*[+-]?[0-9][0-9, ]*(?:\.[0-9]+)?\s*$")
+SPECIAL_SYMBOL = re.compile(r"^(?:0|\*\*\*|X)$")
 ERA_ONLY = re.compile(r"^(?:令和|平成|昭和|大正|明治)\s*\d+(?:年)?$")
+UNIT_WORDS = re.compile(r"(?:数|量|額|率|割合|人口|面積|密度|単価|金額|価格|本数|件数|人数|戸数)$")
+UNIT_MARK = re.compile(r"[（(].+[）)]")
+AREA_HEADER = re.compile(r"(?:都道府県|市区町村|地域|所在地|住所)")
+AREA_ABBREVIATIONS = {
+    "青森",
+    "岩手",
+    "宮城",
+    "秋田",
+    "山形",
+    "福島",
+    "茨城",
+    "栃木",
+    "群馬",
+    "埼玉",
+    "千葉",
+    "神奈川",
+    "新潟",
+    "富山",
+    "石川",
+    "福井",
+    "山梨",
+    "長野",
+    "岐阜",
+    "静岡",
+    "愛知",
+    "三重",
+    "滋賀",
+    "京都",
+    "大阪",
+    "兵庫",
+    "奈良",
+    "和歌山",
+    "鳥取",
+    "島根",
+    "岡山",
+    "広島",
+    "山口",
+    "徳島",
+    "香川",
+    "愛媛",
+    "高知",
+    "福岡",
+    "佐賀",
+    "長崎",
+    "熊本",
+    "大分",
+    "宮崎",
+    "鹿児島",
+    "沖縄",
+}
 
 
 @dataclass(frozen=True)
@@ -48,20 +100,29 @@ class CheckResult:
         }
 
 
-# 表記は e-Stat「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」の
-# チェック項目名から抜粋している。
+# e-Stat「結果表における機械判読可能なデータ作成に関する表記方法 Ver.1.2」の全チェック項目。
 CHECK_ITEM_REFERENCES = {
-    "missing-header": "チェック項目２-５ 項目名等を省略していないか",
-    "duplicate-header": "チェック項目２-５ 項目名等を省略していないか",
+    "unsupported-format": "チェック項目１ ファイル形式は Excel か CSV となっているか",
+    "legacy-xls": "チェック項目１ ファイル形式は Excel か CSV となっているか",
+    "invalid-xlsx": "チェック項目１ ファイル形式は Excel か CSV となっているか",
+    "empty-workbook": "チェック項目１ ファイル形式は Excel か CSV となっているか",
+    "empty-table": "チェック項目４-１ 変数行から始まり、次行からデータ入力がされているか",
+    "missing-header": "チェック項目４-６ 項目名等を省略していないか",
+    "duplicate-header": "チェック項目４-６ 項目名等を省略していないか",
     "inconsistent-columns": "チェック項目４-５ １行１データで表現されているか",
     "leading-empty-rows": "チェック項目４-１３ データが分断されていないか",
     "split-table": "チェック項目４-１３ データが分断されていないか",
-    "layout-whitespace": "チェック項目２-４ スペースや改行等で体裁を整えていないか",
-    "dependent-character": "チェック項目２-９ 機種依存文字を使用していないか。",
-    "decorated-number": "チェック項目２-２ 数値データは数値属性とし、文字列を含まないこと",
-    "era-only-date": "チェック項目２-10 西暦表記又は和暦に西暦の併記がされているか",
+    "layout-whitespace": "チェック項目４-４ スペースを使っていないか",
+    "dependent-character": "チェック項目４-８ 機種依存文字を使用していないか",
+    "decorated-number": "チェック項目４-３ 数値データは数値属性とし、文字列を含まないこと",
+    "era-only-date": "チェック項目４-９ e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか",
+    "missing-unit": "チェック項目４-７ データの単位を記載しているか",
+    "area-abbreviation": "チェック項目４-10 地域コード又は地域名称が表記されているか",
+    "ambiguous-empty-value": "チェック項目４-11 数値データの同一列内に特殊記号（秘匿等）が含まれる場合",
+    "multiple-table-sets": "チェック項目４-14 １ファイル内に変数とデータのセットが複数掲載されていないか",
     "merged-cells": "チェック項目２-３ セルの結合をしていないか",
     "formulas": "チェック項目２-６ 数式を使用している場合は、数値データに修正しているか",
+    "xlsx-object": "チェック項目２-７ オブジェクトを使用していないか",
 }
 
 
@@ -72,16 +133,35 @@ def _finding_as_dict(finding: Finding) -> dict:
 
 
 CHECK_GROUPS = (
-    ("file-format", "ファイル形式・読み取り", ("unsupported-format", "invalid-xlsx", "empty-workbook", "legacy-xls"), "all"),
-    ("headers", "項目名の欠落・重複", ("missing-header", "duplicate-header"), "table"),
-    ("table-structure", "列数・空白行などの表構造", ("leading-empty-rows", "inconsistent-columns", "split-table", "empty-table"), "table"),
-    ("layout", "空白・改行による体裁調整", ("layout-whitespace",), "table"),
-    ("characters", "機種依存文字", ("dependent-character",), "table"),
-    ("numbers", "数値と単位・記号の混在", ("decorated-number",), "table"),
-    ("dates", "和暦のみの時間軸", ("era-only-date",), "table"),
-    ("xlsx-merged-cells", "XLSX のセル結合", ("merged-cells",), "xlsx"),
-    ("xlsx-formulas", "XLSX の数式", ("formulas",), "xlsx"),
-    ("xlsx-objects", "XLSX の図形・画像等のオブジェクト", ("xlsx-object",), "xlsx"),
+    ("estat-1", "チェック項目１ ファイル形式は Excel か CSV となっているか", ("unsupported-format", "invalid-xlsx", "empty-workbook", "legacy-xls"), "all"),
+    ("estat-2-1", "チェック項目２-１ １セル１データとなっているか", (), "xlsx"),
+    ("estat-2-2", "チェック項目２-２ 数値データは数値属性とし、文字列を含まないこと", ("decorated-number",), "xlsx"),
+    ("estat-2-3", "チェック項目２-３ セルの結合をしていないか", ("merged-cells",), "xlsx"),
+    ("estat-2-4", "チェック項目２-４ スペースや改行等で体裁を整えていないか", ("layout-whitespace",), "xlsx"),
+    ("estat-2-5", "チェック項目２-５ 項目名等を省略していないか", ("missing-header", "duplicate-header"), "xlsx"),
+    ("estat-2-6", "チェック項目２-６ 数式を使用している場合は、数値データに修正しているか", ("formulas",), "xlsx"),
+    ("estat-2-7", "チェック項目２-７ オブジェクトを使用していないか", ("xlsx-object",), "xlsx"),
+    ("estat-2-8", "チェック項目２-８ データの単位を記載しているか", ("missing-unit",), "xlsx"),
+    ("estat-2-9", "チェック項目２-９ 機種依存文字を使用していないか。", ("dependent-character",), "xlsx"),
+    ("estat-2-10", "チェック項目２-10 e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか", ("era-only-date",), "xlsx"),
+    ("estat-2-11", "チェック項目２-11 地域コード又は地域名称が表記されているか", ("area-abbreviation",), "xlsx"),
+    ("estat-2-12", "チェック項目２-12 数値データの同一列内に特殊記号（秘匿等）が含まれる場合", ("ambiguous-empty-value",), "xlsx"),
+    ("estat-3-1", "チェック項目３-１ データが分断されていないか", ("leading-empty-rows", "split-table"), "xlsx"),
+    ("estat-3-2", "チェック項目３-２ １シートに複数の表が掲載されていないか", ("multiple-table-sets",), "xlsx"),
+    ("estat-4-1", "チェック項目４-１ 変数行から始まり、次行からデータ入力がされているか", ("empty-table", "leading-empty-rows"), "csv"),
+    ("estat-4-2", "チェック項目４-２ １フィールド１データとなっているか", ("layout-whitespace",), "csv"),
+    ("estat-4-3", "チェック項目４-３ 数値データは数値属性とし、文字列を含まないこと", ("decorated-number",), "csv"),
+    ("estat-4-4", "チェック項目４-４ スペースを使っていないか", ("layout-whitespace",), "csv"),
+    ("estat-4-5", "チェック項目４-５ １行１データで表現されているか", ("inconsistent-columns",), "csv"),
+    ("estat-4-6", "チェック項目４-６ 項目名等を省略していないか", ("missing-header", "duplicate-header"), "csv"),
+    ("estat-4-7", "チェック項目４-７ データの単位を記載しているか", ("missing-unit",), "csv"),
+    ("estat-4-8", "チェック項目４-８ 機種依存文字を使用していないか", ("dependent-character",), "csv"),
+    ("estat-4-9", "チェック項目４-９ e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか", ("era-only-date",), "csv"),
+    ("estat-4-10", "チェック項目４-10 地域コード又は地域名称が表記されているか", ("area-abbreviation",), "csv"),
+    ("estat-4-11", "チェック項目４-11 数値データの同一列内に特殊記号（秘匿等）が含まれる場合", ("ambiguous-empty-value",), "csv"),
+    ("estat-4-12", "チェック項目４-12 各フィールドの値をダブルコーテーション（“）で囲んでいるか", (), "csv"),
+    ("estat-4-13", "チェック項目４-13 データが分断されていないか", ("leading-empty-rows", "split-table"), "csv"),
+    ("estat-4-14", "チェック項目４-14 １ファイル内に変数とデータのセットが複数掲載されていないか", ("multiple-table-sets",), "csv"),
 )
 
 
@@ -91,11 +171,17 @@ def _check_statuses(path: str, findings: list[Finding]) -> list[dict]:
     if suffix not in {".csv", ".tsv", ".xlsx", ".xls"} and ":" in path:
         suffix = Path(path.rsplit(":", 1)[0]).suffix.lower()
     has_table = suffix in {".csv", ".tsv", ".xlsx"}
+    is_csv = suffix in {".csv", ".tsv"}
     present_codes = {finding.code for finding in findings}
     statuses: list[dict] = []
     for check_id, label, codes, scope in CHECK_GROUPS:
-        applicable = scope == "all" or scope == "table" and has_table or scope == "xlsx" and suffix == ".xlsx"
-        detected = sorted(set(codes) & present_codes)
+        applicable = (
+            scope == "all"
+            or scope == "table" and has_table
+            or scope == "xlsx" and suffix == ".xlsx"
+            or scope == "csv" and is_csv
+        )
+        detected = sorted(set(codes) & present_codes) if applicable else []
         statuses.append(
             {
                 "id": check_id,
@@ -144,6 +230,7 @@ def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> Chec
             names[clean] = col
 
     gap_seen = False
+    body_rows: list[tuple[int, list[str]]] = []
     for index, row in enumerate(data[first + 1 :], first + 2):
         if not any(cell.strip() for cell in row):
             gap_seen = True
@@ -153,9 +240,42 @@ def check_rows(rows: Iterable[Iterable[object]], path: str = "<memory>") -> Chec
             gap_seen = False
         if len(row) != width:
             _add(result, "inconsistent-columns", "データ行の列数が項目名の列数と一致しません。", "error", index)
+        body_rows.append((index, row))
         for col, value in enumerate(row, 1):
             _check_cell(result, value, index, col)
+    _check_table_context(result, header, body_rows)
     return result
+
+
+def _check_table_context(result: CheckResult, header: list[str], body_rows: list[tuple[int, list[str]]]) -> None:
+    normalized_header = [cell.strip() for cell in header]
+    for row_index, row in body_rows:
+        if [cell.strip() for cell in row[: len(normalized_header)]] == normalized_header:
+            _add(result, "multiple-table-sets", "１ファイル内に変数とデータのセットを複数掲載しないでください。", "warning", row_index)
+            break
+
+    for col, raw_name in enumerate(header, 1):
+        name = raw_name.strip()
+        column_values = [row[col - 1].strip() for _, row in body_rows if col <= len(row)]
+        non_empty_values = [value for value in column_values if value]
+        if not non_empty_values:
+            continue
+        numeric_count = sum(_is_plain_numeric(value) for value in non_empty_values)
+        special_count = sum(bool(SPECIAL_SYMBOL.match(value)) for value in non_empty_values)
+        if UNIT_WORDS.search(name) and not UNIT_MARK.search(name) and numeric_count >= max(2, len(non_empty_values) // 2):
+            _add(result, "missing-unit", "単位が必要な項目は、項目名と同じフィールドに単位を記載してください。", "warning", 1, col, name)
+        if numeric_count and special_count and any(not value for value in column_values):
+            first_empty_row = next(row_index for row_index, row in body_rows if col <= len(row) and not row[col - 1].strip())
+            _add(result, "ambiguous-empty-value", "数値列の空欄は、0、***、X など意味が分かる特殊記号で表してください。", "warning", first_empty_row, col)
+        if AREA_HEADER.search(name):
+            for row_index, row in body_rows:
+                if col <= len(row) and row[col - 1].strip() in AREA_ABBREVIATIONS:
+                    _add(result, "area-abbreviation", "地域は標準地域コード又は地域名称で表記してください。", "warning", row_index, col, row[col - 1])
+                    break
+
+
+def _is_plain_numeric(value: str) -> bool:
+    return bool(NUMERIC_LIKE.match(value)) and not bool(NUMERIC_WITH_DECORATION.match(value))
 
 
 def _check_cell(result: CheckResult, value: str, row: int, column: int) -> None:

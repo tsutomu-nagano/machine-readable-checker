@@ -1,9 +1,11 @@
 import unittest
 from email.message import Message
 from importlib import reload
+from io import BytesIO
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from openpyxl import Workbook
 
 import machine_readable_checker.api as api_module
 
@@ -27,16 +29,45 @@ class ApiTests(unittest.TestCase):
     def test_upload_returns_check_result(self):
         response = self.client.post(
             "/api/check",
-            files={"file": ("table.csv", "年,人口\n2025,100\n", "text/csv")},
+            files={"file": ("table.csv", "年,人口（人）\n2025,100\n", "text/csv")},
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["filename"], "table.csv")
         self.assertTrue(payload["valid"])
         checks = {item["id"]: item["status"] for item in payload["checks"]}
-        self.assertEqual(checks["headers"], "passed")
-        self.assertEqual(checks["xlsx-formulas"], "not_applicable")
+        self.assertEqual(checks["estat-4-6"], "passed")
+        self.assertEqual(checks["estat-2-6"], "not_applicable")
+        self.assertEqual(len([key for key in checks if key.startswith("estat-")]), 29)
         self.assertEqual(payload["summary"]["issues_found"], 0)
+
+    def test_xlsx_header_findings_are_not_attached_to_csv_check_items(self):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append(["年", ""])
+        sheet.append(["2025", "100"])
+        buffer = BytesIO()
+        workbook.save(buffer)
+        workbook.close()
+        buffer.seek(0)
+
+        response = self.client.post(
+            "/api/check",
+            files={
+                "file": (
+                    "table.xlsx",
+                    buffer.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        checks = {item["id"]: item for item in response.json()["checks"]}
+        self.assertEqual(checks["estat-2-5"]["status"], "issues_found")
+        self.assertEqual(checks["estat-2-5"]["finding_codes"], ["missing-header"])
+        self.assertEqual(checks["estat-4-6"]["status"], "not_applicable")
+        self.assertEqual(checks["estat-4-6"]["finding_codes"], [])
 
     def test_url_download_returns_check_result(self):
         headers = Message()
@@ -46,7 +77,7 @@ class ApiTests(unittest.TestCase):
             return_value={
                 "filename": "file-download",
                 "headers": headers,
-                "content": b"\xe5\xb9\xb4,\xe4\xba\xba\xe5\x8f\xa3\n2025,100\n",
+                "content": "年,人口（人）\n2025,100\n".encode(),
             },
         ):
             response = self.client.post(
@@ -72,12 +103,12 @@ class ApiTests(unittest.TestCase):
     def test_findings_include_a_japanese_e_stat_check_item(self):
         response = self.client.post(
             "/api/check",
-            files={"file": ("table.csv", "年,人口\n令和 7年,100\n", "text/csv")},
+            files={"file": ("table.csv", "年,人口（人）\n令和 7年,100\n", "text/csv")},
         )
         finding = next(item for item in response.json()["findings"] if item["code"] == "era-only-date")
         self.assertEqual(
             finding["check_item"],
-            "チェック項目２-10 西暦表記又は和暦に西暦の併記がされているか",
+            "チェック項目４-９ e-Stat の時間軸コードの表記、西暦表記又は和暦に西暦の併記がされているか",
         )
 
     def test_rejects_unsupported_upload(self):
