@@ -155,3 +155,16 @@ class ApiTests(unittest.TestCase):
         reload(api_module)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["access-control-allow-origin"], "https://example.pages.dev")
+
+    def test_max_upload_mb_can_be_configured(self):
+        with patch.dict("os.environ", {"MAX_UPLOAD_MB": "1"}):
+            reloaded_api = reload(api_module)
+            client = TestClient(reloaded_api.app)
+            response = client.post(
+                "/api/check",
+                files={"file": ("large.csv", b"a" * (1024 * 1024 + 1), "text/csv")},
+            )
+
+        reload(api_module)
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json()["detail"], "ファイルは 1 MB 以下にしてください。")

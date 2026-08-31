@@ -1,6 +1,8 @@
 services:
   app:
     build: .
+    environment:
+      MAX_UPLOAD_MB: 100
     volumes:
       - ./src:/app/src
     ports:

@@ -19,6 +19,7 @@ let showOnlyIssues = false;
 const statusLabels = {
   passed: "問題なし",
   issues_found: "指摘あり",
+  unchecked: "チェック不可",
   not_applicable: "対象外"
 };
 
@@ -328,6 +329,7 @@ function renderSummary(data) {
     element("dl", { className: "summary-metrics" }, [
       metric("問題なし", data.summary.passed),
       metric("指摘あり", data.summary.issues_found),
+      metric("チェック不可", data.summary.unchecked ?? 0),
       metric("対象外", data.summary.not_applicable)
     ])
   );
@@ -349,6 +351,8 @@ function renderCheckItems(sourceChecks, allFindings) {
     }
     const status = relatedFindings.length
       ? "issues_found"
+      : sourceStatuses.includes("unchecked")
+        ? "unchecked"
       : sourceStatuses.length && sourceStatuses.every((sourceStatus) => sourceStatus === "not_applicable")
         ? "not_applicable"
         : "passed";
@@ -419,6 +423,9 @@ function renderCheckItemSituation(status, relatedFindings) {
   if (status === "not_applicable") {
     return element("p", { className: "check-situation" }, "このファイル形式では対象外です。");
   }
+  if (status === "unchecked") {
+    return element("p", { className: "check-situation" }, "この検査項目はチェックができませんでした。");
+  }
   const errorCount = relatedFindings.filter((finding) => finding.severity === "error").length;
   const warningCount = relatedFindings.filter((finding) => finding.severity === "warning").length;
   const messages = Array.from(new Set(relatedFindings.map((finding) => finding.message)));
@@ -479,6 +486,12 @@ function renderSelectedFindings(item) {
       element("p", {}, "該当する検出指摘はありません。")
     ]);
   }
+  if (item.status === "unchecked") {
+    return element("div", { className: "empty-state" }, [
+      element("strong", {}, "チェックができませんでした。"),
+      element("p", {}, "このファイル形式では、この検査項目を判定するための情報を取得できません。")
+    ]);
+  }
   if (!item.relatedFindings.length) {
     return element("div", { className: "empty-state" }, [
       element("strong", {}, "この検査項目では指摘はありません。"),
@@ -513,6 +526,7 @@ function metric(label, value) {
   const className = {
     "問題なし": "metric-passed",
     "指摘あり": "metric-issues_found",
+    "チェック不可": "metric-unchecked",
     "対象外": "metric-not_applicable"
   }[label] ?? "";
   return element("div", { className }, [

@@ -20,7 +20,9 @@ from pydantic import BaseModel, HttpUrl
 
 from .checker import check_file
 
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_MB = 25
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", str(DEFAULT_MAX_UPLOAD_MB)))
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 ALLOWED_SUFFIXES = {".csv", ".tsv", ".xlsx", ".xls"}
 STATIC_DIR = Path(__file__).with_name("static")
 DOWNLOAD_TIMEOUT_SECONDS = 30
@@ -54,6 +56,10 @@ class UrlCheckRequest(BaseModel):
     url: HttpUrl
 
 
+def _upload_size_error() -> HTTPException:
+    return HTTPException(status_code=413, detail=f"ファイルは {MAX_UPLOAD_MB} MB 以下にしてください。")
+
+
 @app.post("/api/check")
 async def check_upload(file: UploadFile = File(...)) -> dict:
     suffix = Path(file.filename or "").suffix.lower()
@@ -62,7 +68,7 @@ async def check_upload(file: UploadFile = File(...)) -> dict:
 
     payload = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(payload) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="ファイルは 25 MB 以下にしてください。")
+        raise _upload_size_error()
 
     temporary_path: Path | None = None
     try:
@@ -114,10 +120,10 @@ def _download_table(url: str) -> dict:
         with urlopen(request, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response:
             content_length = response.headers.get("Content-Length")
             if content_length and int(content_length) > MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail="ファイルは 25 MB 以下にしてください。")
+                raise _upload_size_error()
             content = response.read(MAX_UPLOAD_BYTES + 1)
             if len(content) > MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail="ファイルは 25 MB 以下にしてください。")
+                raise _upload_size_error()
             return {
                 "content": content,
                 "headers": response.headers,

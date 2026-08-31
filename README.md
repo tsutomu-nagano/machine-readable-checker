@@ -40,7 +40,7 @@ machine-readable-checker-api
 
 ブラウザで `http://localhost:8015` を開くと、ファイルアップロードまたは e-Stat の `file-download` URL から検査結果を確認できます。
 
-ファイルアップロード API は `POST /api/check` です。`multipart/form-data` の `file` フィールドに CSV、TSV、XLSX、XLS を指定すると、検査結果を JSON で返します。アップロード上限は 25 MB です。
+ファイルアップロード API は `POST /api/check` です。`multipart/form-data` の `file` フィールドに CSV、TSV、XLSX、XLS を指定すると、検査結果を JSON で返します。アップロード上限は標準で 25 MB です。
 
 URL 指定 API は `POST /api/check-url` です。JSON の `url` フィールドに e-Stat の `file-download` URL を指定します。
 
@@ -62,6 +62,12 @@ curl -X POST http://localhost:8015/api/check-url \
 
 ```text
 CORS_ALLOWED_ORIGINS=https://example.pages.dev,https://example.com
+```
+
+アップロード上限を変更する場合は、環境変数 `MAX_UPLOAD_MB` に MB 単位の整数を指定します。未指定時は `25` です。
+
+```text
+MAX_UPLOAD_MB=50
 ```
 
 Render が設定する `PORT` 環境変数で起動するため、ポート番号の追加設定は不要です。ヘルスチェックは `/health` を使用します。

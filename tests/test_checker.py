@@ -161,7 +161,9 @@ class CheckerTests(unittest.TestCase):
         self.assertEqual(sheet_by_code["merged-cells"], "世帯")
         checks = {item["id"]: item["status"] for item in result.as_dict()["checks"]}
         self.assertEqual(checks["estat-2-3"], "issues_found")
+        self.assertEqual(checks["estat-2-6"], "unchecked")
         self.assertEqual(checks["estat-4-6"], "not_applicable")
+        self.assertEqual(result.as_dict()["summary"]["unchecked"], 1)
 
     def test_ignores_hidden_sheets_in_xls(self):
         with TemporaryDirectory() as directory:
