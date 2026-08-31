@@ -350,6 +350,8 @@ def _check_xlsx(path: Path) -> CheckResult:
             _add(result, "empty-workbook", "ワークシートがありません。", "error")
             return result
         for sheet in workbook.worksheets:
+            if sheet.sheet_state != "visible":
+                continue
             for merged_range in sheet.merged_cells.ranges:
                 merged_values = (
                     sheet.cell(row=row_index, column=column_index).value
@@ -390,6 +392,8 @@ def _check_xls(path: Path) -> CheckResult:
             _add(result, "empty-workbook", "ワークシートがありません。", "error")
             return result
         for sheet in workbook.sheets():
+            if getattr(sheet, "visibility", 0) != 0:
+                continue
             for row_start, row_end, column_start, column_end in sheet.merged_cells:
                 merged_values = (
                     sheet.cell_value(row_index, column_index)

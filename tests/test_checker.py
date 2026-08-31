@@ -98,6 +98,47 @@ class CheckerTests(unittest.TestCase):
         self.assertEqual(sheet_by_code["decorated-number"], "人口")
         self.assertEqual(sheet_by_code["formulas"], "世帯")
 
+    def test_ignores_hidden_sheets_in_xlsx(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "hidden_sheet.xlsx"
+            workbook = Workbook()
+            visible_sheet = workbook.active
+            visible_sheet.title = "表示"
+            visible_sheet.append(["年", "人口（人）"])
+            visible_sheet.append(["2025", "100"])
+            hidden_sheet = workbook.create_sheet("非表示")
+            hidden_sheet.append(["年", "人口"])
+            hidden_sheet.append(["令和 7年", "1,200 人"])
+            hidden_sheet["C1"] = "結合項目"
+            hidden_sheet.merge_cells("C1:D1")
+            hidden_sheet["B2"] = "=50+50"
+            hidden_sheet.sheet_state = "hidden"
+            workbook.save(path)
+            workbook.close()
+
+            result = check_file(path)
+
+        self.assertEqual(result.findings, [])
+
+    def test_ignores_very_hidden_sheets_in_xlsx(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "very_hidden_sheet.xlsx"
+            workbook = Workbook()
+            visible_sheet = workbook.active
+            visible_sheet.title = "表示"
+            visible_sheet.append(["年", "人口（人）"])
+            visible_sheet.append(["2025", "100"])
+            hidden_sheet = workbook.create_sheet("非表示")
+            hidden_sheet.append(["年", "人口"])
+            hidden_sheet.append(["令和 7年", "1,200 人"])
+            hidden_sheet.sheet_state = "veryHidden"
+            workbook.save(path)
+            workbook.close()
+
+            result = check_file(path)
+
+        self.assertEqual(result.findings, [])
+
     def test_reads_xls_with_xlrd_and_includes_sheet_name(self):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "table.xls"
@@ -121,6 +162,27 @@ class CheckerTests(unittest.TestCase):
         checks = {item["id"]: item["status"] for item in result.as_dict()["checks"]}
         self.assertEqual(checks["estat-2-3"], "issues_found")
         self.assertEqual(checks["estat-4-6"], "not_applicable")
+
+    def test_ignores_hidden_sheets_in_xls(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "hidden_sheet.xls"
+            workbook = xlwt.Workbook()
+            visible_sheet = workbook.add_sheet("表示")
+            visible_sheet.write(0, 0, "年")
+            visible_sheet.write(0, 1, "人口（人）")
+            visible_sheet.write(1, 0, "2025")
+            visible_sheet.write(1, 1, "100")
+            hidden_sheet = workbook.add_sheet("非表示")
+            hidden_sheet.visibility = 1
+            hidden_sheet.write(0, 0, "年")
+            hidden_sheet.write(0, 1, "人口")
+            hidden_sheet.write(1, 0, "令和 7年")
+            hidden_sheet.write(1, 1, "1,200 人")
+            workbook.save(path)
+
+            result = check_file(path)
+
+        self.assertEqual(result.findings, [])
 
     def test_xls_reader_assertion_is_reported_as_invalid_file(self):
         with TemporaryDirectory() as directory:
