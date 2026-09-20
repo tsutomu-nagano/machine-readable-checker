@@ -12,12 +12,14 @@ class Finding:
     row: int | None = None
     column: int | None = None
     value: str | None = None
+    preview: dict | None = None
 
 
 @dataclass
 class CheckResult:
     path: str
     findings: list[Finding] = field(default_factory=list)
+    encoding: str | None = None
 
     @property
     def valid(self) -> bool:
@@ -29,6 +31,7 @@ class CheckResult:
         checks = check_statuses(self.path, self.findings)
         return {
             "path": self.path,
+            "encoding": self.encoding,
             "valid": self.valid,
             "findings": [_finding_as_dict(item, finding_check_item(self.path, item.code)) for item in self.findings],
             "checks": checks,

@@ -10,7 +10,8 @@ export default defineConfig(({ command }) => ({
   server: {
     proxy: {
       "/api": process.env.VITE_PROXY_TARGET ?? "http://localhost:8000",
-      "/docs": process.env.VITE_PROXY_TARGET ?? "http://localhost:8000"
+      "/docs": process.env.VITE_PROXY_TARGET ?? "http://localhost:8000",
+      "/openapi.json": process.env.VITE_PROXY_TARGET ?? "http://localhost:8000"
     }
   },
   build: {

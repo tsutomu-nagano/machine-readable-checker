@@ -15,6 +15,22 @@ def codes(rows):
 
 
 class CheckerTests(unittest.TestCase):
+    def test_detects_supported_csv_encodings(self):
+        cases = (
+            ("utf-8-sig", "utf-8-sig"),
+            ("utf-8", "utf-8"),
+            ("cp932", "cp932"),
+        )
+        with TemporaryDirectory() as directory:
+            for file_encoding, expected in cases:
+                path = Path(directory) / f"table-{expected}.csv"
+                path.write_bytes("年,人口（人）\n2025,100\n".encode(file_encoding))
+
+                result = check_file(path)
+
+                self.assertEqual(result.encoding, expected)
+                self.assertEqual(result.as_dict()["encoding"], expected)
+
     def test_valid_table_has_no_findings(self):
         self.assertEqual(codes([["年", "人口（人）"], ["2025", "1234"]]), set())
 
@@ -97,6 +113,12 @@ class CheckerTests(unittest.TestCase):
         sheet_by_code = {finding.code: finding.sheet for finding in result.findings}
         self.assertEqual(sheet_by_code["decorated-number"], "人口")
         self.assertEqual(sheet_by_code["formulas"], "世帯")
+        finding_by_code = {finding.code: finding for finding in result.findings}
+        preview = finding_by_code["decorated-number"].preview
+        self.assertEqual(preview["sheet"], "人口")
+        self.assertEqual(preview["focus_row"], 2)
+        self.assertEqual(preview["focus_column"], 2)
+        self.assertIn("1,200 人", preview["rows"][1])
 
     def test_ignores_hidden_sheets_in_xlsx(self):
         with TemporaryDirectory() as directory:
@@ -159,6 +181,9 @@ class CheckerTests(unittest.TestCase):
         sheet_by_code = {finding.code: finding.sheet for finding in result.findings}
         self.assertEqual(sheet_by_code["decorated-number"], "人口")
         self.assertEqual(sheet_by_code["merged-cells"], "世帯")
+        preview = next(finding.preview for finding in result.findings if finding.code == "decorated-number")
+        self.assertEqual(preview["sheet"], "人口")
+        self.assertIn("1,200 人", preview["rows"][1])
         checks = {item["id"]: item["status"] for item in result.as_dict()["checks"]}
         self.assertEqual(checks["estat-2-3"], "issues_found")
         self.assertEqual(checks["estat-2-6"], "unchecked")

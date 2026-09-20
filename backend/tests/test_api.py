@@ -36,12 +36,22 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["filename"], "table.csv")
+        self.assertEqual(payload["encoding"], "utf-8")
         self.assertTrue(payload["valid"])
         checks = {item["id"]: item["status"] for item in payload["checks"]}
         self.assertEqual(checks["estat-4-6"], "passed")
         self.assertEqual(checks["estat-2-6"], "not_applicable")
         self.assertEqual(len([key for key in checks if key.startswith("estat-")]), 29)
         self.assertEqual(payload["summary"]["issues_found"], 0)
+
+    def test_upload_accepts_cp932_csv_and_returns_encoding(self):
+        response = self.client.post(
+            "/api/check",
+            files={"file": ("table.csv", "年,人口（人）\n2025,100\n".encode("cp932"), "text/csv")},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["encoding"], "cp932")
 
     def test_xlsx_header_findings_are_not_attached_to_csv_check_items(self):
         workbook = Workbook()

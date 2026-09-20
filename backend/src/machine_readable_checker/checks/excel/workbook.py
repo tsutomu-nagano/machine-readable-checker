@@ -29,6 +29,7 @@ def check_xlsx_file(path: Path) -> CheckResult:
             rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
             sheet_result = check_rows(rows, f"{path}:{sheet.title}")
             result.findings.extend(replace(finding, sheet=sheet.title) for finding in sheet_result.findings)
+        result.findings = [_with_xlsx_preview(finding, workbook) for finding in result.findings]
         workbook.close()
     except (OSError, InvalidFileException, ValueError) as error:
         add_finding(result, "invalid-xlsx", f"XLSX を読み取れません: {error}", "error")
@@ -49,6 +50,7 @@ def check_xls_file(path: Path) -> CheckResult:
             rows = [[sheet.cell_value(row_index, column_index) for column_index in range(sheet.ncols)] for row_index in range(sheet.nrows)]
             sheet_result = check_rows(rows, f"{path}:{sheet.name}")
             result.findings.extend(replace(finding, sheet=sheet.name) for finding in sheet_result.findings)
+        result.findings = [_with_xls_preview(finding, workbook) for finding in result.findings]
     except (AssertionError, OSError, struct.error, xlrd.XLRDError, ValueError) as error:
         add_finding(result, "invalid-xlsx", f"XLS を読み取れません: {error}", "error")
     return result
@@ -114,3 +116,56 @@ def _format_xls_range(row_start: int, row_end: int, column_start: int, column_en
     start = f"{get_column_letter(column_start + 1)}{row_start + 1}"
     end = f"{get_column_letter(column_end)}{row_end}"
     return f"{start}:{end}"
+
+
+def _with_xlsx_preview(finding, workbook):
+    if not finding.sheet or finding.row is None:
+        return finding
+    sheet = workbook[finding.sheet]
+    preview = _build_preview(
+        finding,
+        sheet.max_row,
+        sheet.max_column,
+        lambda row, column: sheet.cell(row=row, column=column).value,
+    )
+    return replace(finding, preview=preview)
+
+
+def _with_xls_preview(finding, workbook):
+    if not finding.sheet or finding.row is None:
+        return finding
+    sheet = workbook.sheet_by_name(finding.sheet)
+    preview = _build_preview(
+        finding,
+        sheet.nrows,
+        sheet.ncols,
+        lambda row, column: sheet.cell_value(row - 1, column - 1),
+    )
+    return replace(finding, preview=preview)
+
+
+def _build_preview(finding, max_row: int, max_column: int, value_at) -> dict:
+    focus_column = finding.column or 1
+    start_row = max(1, finding.row - 2)
+    end_row = min(max(max_row, finding.row), finding.row + 2)
+    start_column = max(1, focus_column - 2)
+    end_column = min(max(max_column, focus_column), focus_column + 3)
+    rows = [
+        [_preview_value(value_at(row, column)) for column in range(start_column, end_column + 1)]
+        for row in range(start_row, end_row + 1)
+    ]
+    return {
+        "sheet": finding.sheet,
+        "start_row": start_row,
+        "start_column": start_column,
+        "columns": [get_column_letter(column) for column in range(start_column, end_column + 1)],
+        "rows": rows,
+        "focus_row": finding.row,
+        "focus_column": finding.column,
+    }
+
+
+def _preview_value(value) -> str:
+    if value is None:
+        return ""
+    return str(value)
