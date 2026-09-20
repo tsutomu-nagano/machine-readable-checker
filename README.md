@@ -93,6 +93,16 @@ python -m unittest discover -s tests -v
 
 Web UI は `frontend/` の React + TypeScript + Vite アプリです。開発時は FastAPI と Vite をそれぞれ起動します。
 
+Dockerを使う場合は、最初に開発用サービスを起動します。
+
+```bash
+docker compose -f compose.yaml -f compose.dev.yaml --profile dev up --build
+```
+
+起動後は `http://localhost:8016` を開いてください。`frontend/` 以下を変更すると、イメージを再ビルドしなくてもブラウザへ即時反映されます。開発時のバックエンドはコンテナ内部で接続されます。依存パッケージを変更した場合のみ再ビルドが必要です。
+
+Dockerを使わずに起動する場合は、FastAPI と Vite をそれぞれ起動します。
+
 ```bash
 machine-readable-checker-api
 cd frontend

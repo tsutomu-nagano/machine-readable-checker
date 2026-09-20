@@ -1,0 +1,7 @@
+services:
+  app:
+    ports: !override []
+
+  frontend:
+    ports: !override
+      - "8016:5173"

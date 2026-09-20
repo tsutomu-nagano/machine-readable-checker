@@ -73,39 +73,17 @@ button {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 8px 28px;
+  padding: 4px 8px 30px;
 }
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #0f766e, #0b9488);
-  box-shadow: 0 8px 20px #0f766e35;
-}
-.brand-mark svg {
-  width: 22px;
-}
-.brand strong,
-.brand span {
+.brand-logo {
   display: block;
-}
-.brand strong {
-  font-size: 15px;
-}
-.brand span {
-  margin-top: 2px;
-  color: #7a8995;
-  font-size: 10px;
-  letter-spacing: 0.06em;
+  width: 100%;
+  height: auto;
 }
 .nav-caption {
   margin: 0 12px 8px;
   color: #98a5ae;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.14em;
 }
@@ -132,12 +110,12 @@ button {
 .sidebar nav button span {
   display: grid;
   gap: 2px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
 }
 .sidebar nav button small {
   color: #98a5ae;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
 }
 .sidebar nav button > svg:last-child {
@@ -149,7 +127,7 @@ button {
   border-radius: 999px;
   background: #e8eef1;
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
 }
 .sidebar nav button:hover {
   background: #f2f7f6;
@@ -176,12 +154,12 @@ button {
   color: #0f766e;
 }
 .sidebar-note strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 .sidebar-note p {
   margin: 3px 0 0;
   color: #75848e;
-  font-size: 9px;
+  font-size: 11px;
 }
 .api-link {
   display: flex;
@@ -190,7 +168,7 @@ button {
   margin-top: 10px;
   padding: 10px 13px;
   color: #687783;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -219,12 +197,12 @@ button {
   display: block;
 }
 .topbar strong {
-  font-size: 14px;
+  font-size: 16px;
 }
 .topbar > div span {
   margin-top: 2px;
   color: #81909b;
-  font-size: 10px;
+  font-size: 12px;
 }
 .service-status {
   display: flex !important;
@@ -234,7 +212,7 @@ button {
   border: 1px solid #dcebe8;
   border-radius: 999px;
   color: #427068;
-  font-size: 10px;
+  font-size: 12px;
 }
 .service-status i {
   width: 7px;
@@ -258,19 +236,19 @@ button {
 }
 .page-heading > span {
   color: #0f766e;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.16em;
 }
 .page-heading h1 {
   margin: 5px 0 7px;
-  font-size: 28px;
+  font-size: 30px;
   letter-spacing: -0.03em;
 }
 .page-heading p {
   margin: 0;
   color: #73828d;
-  font-size: 13px;
+  font-size: 15px;
 }
 .panel {
   border: 1px solid #dfe7eb;
@@ -289,12 +267,12 @@ button {
 }
 .panel-title h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 .panel-title p {
   margin: 3px 0 0;
   color: #84929c;
-  font-size: 11px;
+  font-size: 13px;
 }
 .icon-box {
   display: grid;
@@ -326,7 +304,7 @@ button {
   border-radius: 7px;
   color: #71808b;
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .segmented button.active {
@@ -365,7 +343,7 @@ button {
 }
 .file-drop span {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -373,7 +351,7 @@ button {
 .file-drop small {
   margin-top: 2px;
   color: #91a0a9;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
 }
 .url-field {
@@ -381,7 +359,7 @@ button {
   gap: 5px;
 }
 .url-field span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .url-field input {
@@ -390,7 +368,7 @@ button {
   border: 1px solid #cdd8dd;
   border-radius: 10px;
   outline: none;
-  font-size: 11px;
+  font-size: 13px;
 }
 .url-field input:focus {
   border-color: #0f766e;
@@ -407,7 +385,7 @@ button {
   border-radius: 10px;
   color: #fff;
   background: #0f766e;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   box-shadow: 0 7px 14px #0f766e26;
 }
@@ -429,7 +407,7 @@ button {
   padding-top: 13px;
   border-top: 1px solid #edf1f3;
   color: #60717c;
-  font-size: 11px;
+  font-size: 13px;
 }
 .notice svg {
   width: 15px;
@@ -466,12 +444,12 @@ button {
 }
 .empty-card h2 {
   margin: 16px 0 6px;
-  font-size: 16px;
+  font-size: 18px;
 }
 .empty-card p {
   margin: 0;
   color: #82919a;
-  font-size: 12px;
+  font-size: 14px;
 }
 .result-hero {
   display: grid;
@@ -514,7 +492,7 @@ button {
 }
 .result-file span {
   color: #4e8078;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -522,14 +500,14 @@ button {
   overflow: hidden;
   margin: 3px 0;
   color: #18232b;
-  font-size: 14px;
+  font-size: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .result-file small {
   overflow-wrap: anywhere;
   color: #85939c;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -551,11 +529,11 @@ button {
 }
 .metric span {
   color: #7d8b95;
-  font-size: 9px;
+  font-size: 11px;
 }
 .metric strong {
   margin-top: 3px;
-  font-size: 20px;
+  font-size: 22px;
 }
 .metric.green {
   border-color: #22a06b;
@@ -581,12 +559,12 @@ button {
 }
 .results-toolbar h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
 }
 .results-toolbar p {
   margin: 3px 0 0;
   color: #87959e;
-  font-size: 10px;
+  font-size: 12px;
 }
 .filter-check {
   display: flex;
@@ -596,7 +574,7 @@ button {
   border: 1px solid #d7e0e4;
   border-radius: 8px;
   color: #596a75;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -651,18 +629,18 @@ button {
 }
 .check-row small {
   color: #7c8b94;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
 }
 .check-row strong {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .check-row em {
   padding: 4px 7px;
   border-radius: 999px;
   background: #edf2f4;
-  font-size: 9px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 700;
   white-space: nowrap;
@@ -688,7 +666,7 @@ button {
 }
 .detail-heading span {
   color: #0f766e;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 .detail-heading b {
@@ -696,7 +674,7 @@ button {
   border-radius: 999px;
   background: #eef2f4;
   color: #667681;
-  font-size: 9px;
+  font-size: 11px;
 }
 .check-detail.issues_found .detail-heading b {
   color: #b83232;
@@ -704,7 +682,7 @@ button {
 }
 .check-detail h3 {
   margin: 10px 0 20px;
-  font-size: 15px;
+  font-size: 17px;
   line-height: 1.65;
 }
 .detail-empty {
@@ -722,7 +700,7 @@ button {
 }
 .detail-empty p {
   margin: 10px 0 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 .finding-list {
   display: grid;
@@ -745,7 +723,7 @@ button {
   gap: 4px;
   padding: 4px 7px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 .finding-list header span.error {
@@ -762,11 +740,11 @@ button {
 .finding-list header small,
 .finding-list article > small {
   color: #83919a;
-  font-size: 9px;
+  font-size: 11px;
 }
 .finding-list article p {
   margin: 10px 0 5px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.7;
 }
 .no-issues {
@@ -775,7 +753,7 @@ button {
   gap: 8px;
   padding: 50px;
   color: #23805e;
-  font-size: 11px;
+  font-size: 13px;
 }
 .json-panel {
   border: 1px solid #dfe7eb;
@@ -788,7 +766,7 @@ button {
   gap: 8px;
   padding: 12px 15px;
   color: #576974;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -803,7 +781,7 @@ button {
   border-radius: 0 0 12px 12px;
   color: #d9e3ec;
   background: #111b25;
-  font-size: 10px;
+  font-size: 12px;
 }
 .history-panel {
   overflow: hidden;
@@ -826,21 +804,21 @@ button {
 }
 .history-summary span {
   color: #768691;
-  font-size: 10px;
+  font-size: 12px;
 }
 .history-summary strong {
   margin-right: 3px;
   color: #17212b;
-  font-size: 17px;
+  font-size: 19px;
 }
 .history-summary > small {
   color: #84939c;
-  font-size: 9px;
+  font-size: 11px;
 }
 .history-head,
 .history-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 180px 120px 44px;
+  grid-template-columns: minmax(220px, 1fr) 170px minmax(310px, auto) 44px;
   align-items: center;
   gap: 14px;
   padding: 11px 20px;
@@ -848,7 +826,7 @@ button {
 .history-head {
   color: #84929b;
   background: #f7f9fa;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
 }
 .history-row {
@@ -878,33 +856,53 @@ button {
 }
 .history-file strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .history-file small {
   margin-top: 3px;
   color: #8a98a0;
-  font-size: 9px;
+  font-size: 11px;
 }
 .history-row time {
   color: #62727d;
-  font-size: 10px;
+  font-size: 12px;
 }
-.history-status {
-  width: fit-content;
-  padding: 5px 8px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 800;
+.history-result-summary {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 5px;
 }
-.history-status.success {
+.history-result-summary span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.history-result-summary b {
+  font-size: 12px;
+}
+.history-result-summary .passed {
   color: #14754f;
   background: #e2f5ec;
 }
-.history-status.warning {
+.history-result-summary .issues {
   color: #b83232;
   background: #fdeaea;
+}
+.history-result-summary .unchecked {
+  color: #986515;
+  background: #fff2d9;
+}
+.history-result-summary .not-applicable {
+  color: #596a75;
+  background: #edf2f4;
 }
 .icon-button {
   display: grid;
@@ -937,12 +935,12 @@ button {
 }
 .empty-history h2 {
   margin: 12px 0 5px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .empty-history p {
   margin: 0;
   color: #87959e;
-  font-size: 10px;
+  font-size: 12px;
 }
 @media (max-width: 1000px) {
   .app-shell {
@@ -1022,7 +1020,7 @@ button {
     padding: 24px 0 40px;
   }
   .page-heading h1 {
-    font-size: 23px;
+    font-size: 25px;
   }
   .check-form-card form {
     grid-template-columns: 1fr;
@@ -1047,8 +1045,11 @@ button {
     padding: 14px;
   }
   .history-row time,
-  .history-row > .history-status {
+  .history-result-summary {
     grid-column: 1;
+  }
+  .history-result-summary {
+    grid-template-columns: repeat(2, max-content);
   }
   .history-row .icon-button {
     grid-column: 2;
@@ -1068,7 +1069,7 @@ button {
     padding: 12px;
   }
   .check-row strong {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 

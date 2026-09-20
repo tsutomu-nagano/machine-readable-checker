@@ -10,6 +10,25 @@ services:
     ports:
       - "8015:8000"
 
+  frontend:
+    build:
+      context: .
+      target: frontend-builder
+    command: npm run dev
+    working_dir: /app/frontend
+    environment:
+      VITE_PROXY_TARGET: http://app:8000
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend_node_modules:/app/frontend/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - app
+    networks:
+      - shared
+    profiles: ["dev"]
+
   test:
     build: .
     command: python -m unittest discover -s tests -v
@@ -19,3 +38,6 @@ networks:
   shared:
     external: true
     name: shared-network
+
+volumes:
+  frontend_node_modules:
