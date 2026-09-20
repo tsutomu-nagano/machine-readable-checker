@@ -2,6 +2,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+frontend/node_modules/
+frontend/*.tsbuildinfo
 build/
 PROJECT_STATUS.md
 .artifacts

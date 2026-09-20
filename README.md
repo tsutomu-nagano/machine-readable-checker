@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="src/machine_readable_checker/static/logo.png" alt="machine-readable-checker logo" width="360">
-</p>
-
 # machine-readable-checker
 
 
@@ -26,7 +22,7 @@ e-Stat の「結果表における機械判読可能なデータ作成に関す�
 ## 使い方
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ./backend
 machine-readable-checker sample.xlsx
 machine-readable-checker --json result.csv
 ```
@@ -34,7 +30,7 @@ machine-readable-checker --json result.csv
 ## API と Web UI
 
 ```bash
-python -m pip install ".[test]"
+python -m pip install "./backend[test]"
 machine-readable-checker-api
 ```
 
@@ -89,7 +85,21 @@ docker compose --profile test run --rm test
 ## 開発時のテスト
 
 ```bash
+cd backend
 python -m unittest discover -s tests -v
 ```
+
+## フロントエンド開発
+
+Web UI は `frontend/` の React + TypeScript + Vite アプリです。開発時は FastAPI と Vite をそれぞれ起動します。
+
+```bash
+machine-readable-checker-api
+cd frontend
+npm install
+npm run dev
+```
+
+本番用の静的ファイルは `npm run build` で `backend/src/machine_readable_checker/static/` に生成されます。Docker イメージのビルドではこの処理も自動実行されます。
 
 参考資料: [e-Stat: 結果表における機械判読可能なデータ作成に関する表記方法](https://www.e-stat.go.jp/estat/html/machine-readable-stats-format.pdf)

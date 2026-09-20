@@ -27,4 +27,4 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
-machine_readable_checker = ["static/*"]
+machine_readable_checker = ["static/*", "static/assets/*"]

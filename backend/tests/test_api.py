@@ -25,6 +25,8 @@ class ApiTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("機械判読可能性チェッカー", response.text)
+        self.assertIn('id="root"', response.text)
+        self.assertIn('type="module"', response.text)
 
     def test_upload_returns_check_result(self):
         response = self.client.post(

@@ -1,10 +1,12 @@
 services:
   app:
     build: .
+    networks:
+      - shared
     environment:
       MAX_UPLOAD_MB: 100
     volumes:
-      - ./src:/app/src
+      - ./backend/src:/app/backend/src
     ports:
       - "8015:8000"
 
@@ -12,3 +14,8 @@ services:
     build: .
     command: python -m unittest discover -s tests -v
     profiles: ["test"]
+
+networks:
+  shared:
+    external: true
+    name: shared-network

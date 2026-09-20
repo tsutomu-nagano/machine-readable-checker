@@ -191,7 +191,7 @@ class CheckerTests(unittest.TestCase):
             path = Path(directory) / "broken.xls"
             path.write_bytes(b"not a valid xls")
 
-            with patch("machine_readable_checker.checker.xlrd.open_workbook", side_effect=AssertionError()):
+        with patch("machine_readable_checker.checks.excel.workbook.xlrd.open_workbook", side_effect=AssertionError()):
                 result = check_file(path)
 
         finding = result.findings[0]
@@ -203,7 +203,7 @@ class CheckerTests(unittest.TestCase):
             path = Path(directory) / "broken.xls"
             path.write_bytes(b"not a valid xls")
 
-            with patch("machine_readable_checker.checker.xlrd.open_workbook", side_effect=struct.error("unpack requires a buffer of 2 bytes")):
+        with patch("machine_readable_checker.checks.excel.workbook.xlrd.open_workbook", side_effect=struct.error("unpack requires a buffer of 2 bytes")):
                 result = check_file(path)
 
         finding = result.findings[0]
