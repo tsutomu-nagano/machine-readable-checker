@@ -39,6 +39,64 @@ class CheckerTests(unittest.TestCase):
         result = codes([["年", "年", ""], ["2025", "1"], [], ["2026", "2", "3"]])
         self.assertTrue({"duplicate-header", "missing-header", "inconsistent-columns", "split-table"} <= result)
 
+    def test_title_is_not_treated_as_header_when_numeric_data_is_below(self):
+        result = check_rows(
+            [
+                ["平均年齢・平均給与月額等", "", "", ""],
+                [],
+                ["団体コード", "指定都市名", "給与", ""],
+                ["", "", "平均給料月額", "諸手当月額"],
+                [],
+                ["011002", "札幌市", "301905", "91545"],
+                ["041009", "仙台市", "321623", "118023"],
+            ]
+        )
+
+        self.assertNotIn("missing-header", {item.code for item in result.findings})
+
+    def test_missing_header_is_detected_relative_to_numeric_data(self):
+        result = check_rows(
+            [
+                ["統計表の表題", "", ""],
+                [],
+                ["年", "人口", ""],
+                ["2025", "100", "200"],
+                ["2026", "110", "210"],
+            ]
+        )
+
+        missing = [item for item in result.findings if item.code == "missing-header"]
+        self.assertEqual([(item.row, item.column) for item in missing], [(3, 3)])
+
+    def test_blank_rows_outside_numeric_data_are_not_treated_as_split_table(self):
+        result = check_rows(
+            [
+                ["統計表の表題", "", ""],
+                [],
+                ["年", "地域", "人口"],
+                [],
+                ["2025", "札幌市", "100"],
+                ["2026", "仙台市", "110"],
+                [],
+                ["注：人口は推計値。", "", ""],
+            ]
+        )
+
+        self.assertNotIn("split-table", {item.code for item in result.findings})
+
+    def test_blank_row_inside_numeric_data_is_treated_as_split_table(self):
+        result = check_rows(
+            [
+                ["年", "地域", "人口"],
+                ["2025", "札幌市", "100"],
+                [],
+                ["2026", "仙台市", "110"],
+            ]
+        )
+
+        split = [item for item in result.findings if item.code == "split-table"]
+        self.assertEqual([item.row for item in split], [4])
+
 
     def test_checks_decorated_values_and_layout(self):
         result = codes([["年", "人口（人）"], ["令和 7年", "1,200 人"], ["2026", "A  B"]])

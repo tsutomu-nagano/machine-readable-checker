@@ -127,8 +127,6 @@ function summarizeChecks(checks: CheckItem[]): CheckResult["summary"] {
 }
 
 function ResultDashboard({ result }: { result: CheckResult }) {
-  const isExcel = isExcelResult(result);
-  const TypeIcon = isExcel ? FileSpreadsheet : FileText;
   const [onlyIssues, setOnlyIssues] = useState(false);
   const applicableChecks = getApplicableChecks(result);
   const summary = summarizeChecks(applicableChecks);
@@ -137,15 +135,49 @@ function ResultDashboard({ result }: { result: CheckResult }) {
   const selected = visible.find(c => c.id === selectedId) ?? visible[0];
   const findings = selected ? result.findings.filter(f => selected.finding_codes.includes(f.code)) : [];
   return <div className="result-stack">
-    <section className={`result-hero ${result.valid ? "valid" : "invalid"}`}><div className="result-file"><div className={isExcel ? "excel" : "csv"}><TypeIcon /></div><span>{result.valid ? "チェック完了" : "確認が必要"}<strong>{result.filename}</strong><small>{result.source_url ? `取得元: ${result.source_url}` : "アップロードされたファイル"}{result.encoding ? ` / 文字コード: ${result.encoding}` : ""}</small></span></div><div className="metrics"><Metric label="問題なし" value={summary.passed} tone="green" /><Metric label="指摘あり" value={summary.issues_found} tone="red" /><Metric label="チェック不可" value={summary.unchecked} tone="amber" /><Metric label="対象外" value={summary.not_applicable} tone="slate" /></div></section>
-    <section className="panel results-panel"><div className="results-toolbar"><div><h2>チェック項目</h2><p>{applicableChecks.length}項目の検査結果</p></div><label className="filter-check"><input type="checkbox" checked={onlyIssues} onChange={e => setOnlyIssues(e.target.checked)} />指摘ありのみ表示</label></div>
+    <section className="panel results-panel"><ResultContextHeader result={result} summary={summary} checkCount={applicableChecks.length} /><div className="results-toolbar"><div><h2>チェック項目</h2></div><label className="filter-check"><input type="checkbox" checked={onlyIssues} onChange={e => setOnlyIssues(e.target.checked)} />指摘ありのみ表示</label></div>
       <div className="checks-grid"><div className="check-list">{visible.length ? visible.map(check => <CheckRow key={check.id} check={check} active={selected?.id === check.id} onClick={() => setSelectedId(check.id)} />) : <div className="no-issues"><CheckCircle2 />指摘のある項目はありません</div>}</div><CheckDetail check={selected} findings={findings} sheetPreviews={result.sheet_previews ?? []} /></div>
     </section>
     <details className="json-panel"><summary><Braces />検査結果のJSONを表示</summary><pre>{JSON.stringify(result, null, 2)}</pre></details>
   </div>;
 }
 
-function Metric({ label, value, tone }: { label: string; value: number; tone: string }) { return <div className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></div>; }
+function ResultContextHeader({ result, summary, checkCount }: { result: CheckResult; summary: CheckResult["summary"]; checkCount: number }) {
+  const isExcel = isExcelResult(result);
+  const TypeIcon = isExcel ? FileSpreadsheet : FileText;
+  const [fileInformationOpen, setFileInformationOpen] = useState(false);
+  const fileInformationRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!fileInformationOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!fileInformationRef.current?.contains(event.target as Node)) setFileInformationOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFileInformationOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [fileInformationOpen]);
+  return <header className="result-context-header">
+    <div className="result-context-main">
+      <span className={`result-context-icon ${isExcel ? "excel" : "csv"}`}><TypeIcon /></span>
+      <div className="result-context-title"><strong title={result.filename}>{result.filename}</strong></div>
+    </div>
+    <div className="result-context-summary" aria-label="チェック結果の集計">
+      <span className="result-context-check-count">{checkCount}項目の検査結果</span>
+      <Metric label="問題なし" value={summary.passed} tone="green" />
+      <Metric label="指摘あり" value={summary.issues_found} tone="red" />
+      <Metric label="チェック不可" value={summary.unchecked} tone="amber" />
+    </div>
+    <details ref={fileInformationRef} className="file-information" open={fileInformationOpen} onToggle={event => setFileInformationOpen(event.currentTarget.open)}><summary><Info />ファイル情報</summary><div><dl><dt>ファイル名</dt><dd>{result.filename}</dd><dt>取得方法</dt><dd>{result.source_url ? "e-Stat取得" : "ファイルアップロード"}</dd>{result.source_url ? <><dt>取得元URL</dt><dd><a href={result.source_url} target="_blank" rel="noreferrer">{result.source_url}</a></dd></> : null}{result.encoding ? <><dt>文字コード</dt><dd>{result.encoding}</dd></> : null}</dl></div></details>
+  </header>;
+}
+
+function Metric({ label, value, tone }: { label: string; value: number; tone: string }) { return <span className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></span>; }
 function CheckRow({ check, active, onClick }: { check: CheckItem; active: boolean; onClick: () => void }) {
   const [number, ...title] = check.label.split(" ");
   const Icon = check.status === "passed" ? CheckCircle2 : check.status === "issues_found" ? XCircle : check.status === "unchecked" ? CircleHelp : Info;
