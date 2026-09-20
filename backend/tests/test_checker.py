@@ -77,6 +77,12 @@ class CheckerTests(unittest.TestCase):
             result = check_file(path)
 
         self.assertTrue({"merged-cells", "formulas"} <= {item.code for item in result.findings})
+        self.assertEqual(result.sheet_previews[0]["merged_ranges"], [{
+            "start_row": 1,
+            "end_row": 1,
+            "start_column": 3,
+            "end_column": 4,
+        }])
 
     def test_ignores_empty_merged_cells_in_xlsx(self):
         with TemporaryDirectory() as directory:
@@ -119,6 +125,9 @@ class CheckerTests(unittest.TestCase):
         self.assertEqual(preview["focus_row"], 2)
         self.assertEqual(preview["focus_column"], 2)
         self.assertIn("1,200 人", preview["rows"][1])
+        population_sheet = next(item for item in result.sheet_previews if item["sheet"] == "人口")
+        self.assertEqual(population_sheet["columns"], ["A", "B"])
+        self.assertEqual(population_sheet["rows"], [["年", "人口"], ["2025", "1,200 人"]])
 
     def test_ignores_hidden_sheets_in_xlsx(self):
         with TemporaryDirectory() as directory:

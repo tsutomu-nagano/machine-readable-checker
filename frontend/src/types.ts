@@ -11,6 +11,20 @@ export interface ExcelPreview {
   focus_column?: number | null;
 }
 
+export interface ExcelSheetPreview {
+  sheet: string;
+  columns: string[];
+  rows: string[][];
+  merged_ranges?: ExcelMergedRange[];
+}
+
+export interface ExcelMergedRange {
+  start_row: number;
+  end_row: number;
+  start_column: number;
+  end_column: number;
+}
+
 export interface Finding {
   code: string;
   message: string;
@@ -38,6 +52,7 @@ export interface CheckResult {
   source_url?: string;
   valid: boolean;
   findings: Finding[];
+  sheet_previews?: ExcelSheetPreview[];
   checks: CheckItem[];
   summary: Record<CheckStatus, number>;
 }

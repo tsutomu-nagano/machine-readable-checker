@@ -20,6 +20,7 @@ class CheckResult:
     path: str
     findings: list[Finding] = field(default_factory=list)
     encoding: str | None = None
+    sheet_previews: list[dict] = field(default_factory=list)
 
     @property
     def valid(self) -> bool:
@@ -34,6 +35,7 @@ class CheckResult:
             "encoding": self.encoding,
             "valid": self.valid,
             "findings": [_finding_as_dict(item, finding_check_item(self.path, item.code)) for item in self.findings],
+            "sheet_previews": self.sheet_previews,
             "checks": checks,
             "summary": {
                 "issues_found": sum(item["status"] == "issues_found" for item in checks),

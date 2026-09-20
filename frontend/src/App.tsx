@@ -1,11 +1,11 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle, Braces, CheckCircle2, ChevronRight, CircleHelp, Clock3, FileCheck2,
   FileSpreadsheet, FileText, Info, LoaderCircle, Trash2, UploadCloud, X, XCircle
 } from "lucide-react";
 import { checkFile, checkUrl } from "@/lib/api";
 import { historyStore } from "@/lib/history-store";
-import type { CheckItem, CheckResult, ExcelPreview, Finding, HistoryRecord } from "@/types";
+import type { CheckItem, CheckResult, ExcelPreview, ExcelSheetPreview, Finding, HistoryRecord } from "@/types";
 
 type Source = "file" | "url";
 
@@ -139,7 +139,7 @@ function ResultDashboard({ result }: { result: CheckResult }) {
   return <div className="result-stack">
     <section className={`result-hero ${result.valid ? "valid" : "invalid"}`}><div className="result-file"><div className={isExcel ? "excel" : "csv"}><TypeIcon /></div><span>{result.valid ? "チェック完了" : "確認が必要"}<strong>{result.filename}</strong><small>{result.source_url ? `取得元: ${result.source_url}` : "アップロードされたファイル"}{result.encoding ? ` / 文字コード: ${result.encoding}` : ""}</small></span></div><div className="metrics"><Metric label="問題なし" value={summary.passed} tone="green" /><Metric label="指摘あり" value={summary.issues_found} tone="red" /><Metric label="チェック不可" value={summary.unchecked} tone="amber" /><Metric label="対象外" value={summary.not_applicable} tone="slate" /></div></section>
     <section className="panel results-panel"><div className="results-toolbar"><div><h2>チェック項目</h2><p>{applicableChecks.length}項目の検査結果</p></div><label className="filter-check"><input type="checkbox" checked={onlyIssues} onChange={e => setOnlyIssues(e.target.checked)} />指摘ありのみ表示</label></div>
-      <div className="checks-grid"><div className="check-list">{visible.length ? visible.map(check => <CheckRow key={check.id} check={check} active={selected?.id === check.id} onClick={() => setSelectedId(check.id)} />) : <div className="no-issues"><CheckCircle2 />指摘のある項目はありません</div>}</div><CheckDetail check={selected} findings={findings} /></div>
+      <div className="checks-grid"><div className="check-list">{visible.length ? visible.map(check => <CheckRow key={check.id} check={check} active={selected?.id === check.id} onClick={() => setSelectedId(check.id)} />) : <div className="no-issues"><CheckCircle2 />指摘のある項目はありません</div>}</div><CheckDetail check={selected} findings={findings} sheetPreviews={result.sheet_previews ?? []} /></div>
     </section>
     <details className="json-panel"><summary><Braces />検査結果のJSONを表示</summary><pre>{JSON.stringify(result, null, 2)}</pre></details>
   </div>;
@@ -152,21 +152,101 @@ function CheckRow({ check, active, onClick }: { check: CheckItem; active: boolea
   return <button className={`check-row ${check.status} ${active ? "active" : ""}`} onClick={onClick}><Icon /><span><small>{number}</small><strong>{title.join(" ")}</strong></span><em>{statusText[check.status]}{check.finding_count ? ` ${check.finding_count}` : ""}</em><ChevronRight /></button>;
 }
 
-function CheckDetail({ check, findings }: { check?: CheckItem; findings: Finding[] }) {
+function CheckDetail({ check, findings, sheetPreviews }: { check?: CheckItem; findings: Finding[]; sheetPreviews: ExcelSheetPreview[] }) {
+  const [selectedFindingIndex, setSelectedFindingIndex] = useState(0);
+  useEffect(() => { setSelectedFindingIndex(0); }, [check?.id]);
   if (!check) return <aside className="check-detail"><CircleHelp /><h3>表示する項目がありません</h3></aside>;
+  const findingIds = new Map(findings.map((finding, index) => [finding, `F-${String(index + 1).padStart(3, "0")}`]));
+  const previewFindings = findings.filter(finding => finding.preview);
+  const selectedFinding = previewFindings[selectedFindingIndex] ?? previewFindings[0];
+  const findingGroups = Array.from(findings.reduce((groups, finding) => {
+    const key = `${finding.severity}\u0000${finding.message}`;
+    const group = groups.get(key) ?? [];
+    group.push(finding);
+    groups.set(key, group);
+    return groups;
+  }, new Map<string, Finding[]>()).values());
   return <aside className={`check-detail ${check.status}`}><div className="detail-heading"><span>{check.id.replace("estat-", "チェック項目 ")}</span><b>{statusText[check.status]}</b></div><h3>{check.label.split(" ").slice(1).join(" ")}</h3>
-    {findings.length ? <div className="finding-list">{findings.map((finding, index) => <article key={`${finding.code}-${index}`}><header><span className={finding.severity}><AlertTriangle />{finding.severity === "error" ? "要修正" : "要確認"}</span>{finding.sheet ? <small>シート: {finding.sheet}</small> : null}</header><p>{finding.message}</p>{finding.row ? <small>{finding.row}行{finding.column ? ` ${finding.column}列` : ""}</small> : null}{finding.preview ? <ExcelPreviewTable preview={finding.preview} /> : null}</article>)}</div>
+    {findings.length ? <div className={`finding-detail-layout ${selectedFinding ? "has-preview" : ""}`}><div className="finding-list">{findingGroups.map((group, groupIndex) => {
+      const representative = group[0];
+      const selected = group.includes(selectedFinding);
+      return <article className={selected ? "selected" : ""} key={`${representative.message}-${groupIndex}`}><header><span className={representative.severity}><AlertTriangle />{representative.severity === "error" ? "要修正" : "要確認"}</span>{group.length > 1 ? <small>{group.length}箇所</small> : null}</header><p>{representative.message}</p><div className="finding-locations">{group.map((finding, index) => {
+        const previewIndex = previewFindings.indexOf(finding);
+        const selectable = previewIndex >= 0;
+        const location = [finding.sheet ? `シート: ${finding.sheet}` : null, finding.row ? `${finding.row}行${finding.column ? ` ${finding.column}列` : ""}` : null].filter(Boolean).join(" / ") || "位置情報なし";
+        const findingId = findingIds.get(finding);
+        return selectable ? <button type="button" className={selectedFinding === finding ? "active" : ""} key={`${finding.code}-${index}`} onClick={() => setSelectedFindingIndex(previewIndex)}><b>{findingId}</b>{location}</button> : <span key={`${finding.code}-${index}`}><b>{findingId}</b>{location}</span>;
+      })}</div></article>;
+    })}</div>{selectedFinding?.preview ? <ExcelPreviewTable preview={selectedFinding.preview} fullPreview={sheetPreviews.find(item => item.sheet === selectedFinding.sheet)} annotations={findings.filter(finding => finding.sheet === selectedFinding.sheet && finding.row != null).map(finding => ({ finding, id: findingIds.get(finding)! }))} /> : null}</div>
       : <div className="detail-empty"><CheckCircle2 /><p>{check.status === "passed" ? "この項目に指摘はありません。" : check.status === "unchecked" ? "この項目はチェックできませんでした。" : "このファイル形式では対象外です。"}</p></div>}
   </aside>;
 }
 
-function ExcelPreviewTable({ preview }: { preview: ExcelPreview }) {
-  return <div className="excel-preview"><div className="excel-preview-label"><FileSpreadsheet />Excelプレビュー</div><div className="excel-preview-scroll"><table><thead><tr><th /><>{preview.columns.map(column => <th key={column}>{column}</th>)}</></tr></thead><tbody>{preview.rows.map((row, rowOffset) => {
-    const rowNumber = preview.start_row + rowOffset;
+function ExcelPreviewTable({ preview, fullPreview, annotations }: { preview: ExcelPreview; fullPreview?: ExcelSheetPreview; annotations: { finding: Finding; id: string }[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const columns = fullPreview?.columns ?? preview.columns;
+  const rows = fullPreview?.rows ?? preview.rows;
+  const startRow = fullPreview ? 1 : preview.start_row;
+  const startColumn = fullPreview ? 1 : preview.start_column;
+  const mergeAnchors = new Map<string, NonNullable<ExcelSheetPreview["merged_ranges"]>[number]>();
+  const mergedCoveredCells = new Set<string>();
+  for (const range of fullPreview?.merged_ranges ?? []) {
+    mergeAnchors.set(`${range.start_row}:${range.start_column}`, range);
+    for (let row = range.start_row; row <= range.end_row; row += 1) {
+      for (let column = range.start_column; column <= range.end_column; column += 1) {
+        if (row !== range.start_row || column !== range.start_column) mergedCoveredCells.add(`${row}:${column}`);
+      }
+    }
+  }
+  const columnWidths = columns.map((column, columnIndex) => {
+    const values = [column, ...rows.map(row => row[columnIndex] ?? "")];
+    const longestLine = Math.max(...values.flatMap(value => String(value).split(/\r?\n/)).map(line =>
+      Array.from(line).reduce((length, character) => length + (/^[\x00-\x7F]$/.test(character) ? 1 : 2), 0)
+    ), 1);
+    return Math.min(320, Math.max(72, longestLine * 7 + 22));
+  });
+  const tableWidth = 34 + columnWidths.reduce((total, width) => total + width, 0);
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const frame = requestAnimationFrame(() => {
+      const column = preview.focus_column ?? 1;
+      const target = container.querySelector<HTMLElement>(`[data-row="${preview.focus_row}"][data-column="${column}"]`);
+      if (!target) return;
+      const stickyHeaderHeight = 28;
+      const stickyRowWidth = 34;
+      const padding = 16;
+      const availableHeight = container.clientHeight - stickyHeaderHeight;
+      const maxLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+      const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const targetLeftInContent = container.scrollLeft + targetRect.left - containerRect.left;
+      const targetTopInContent = container.scrollTop + targetRect.top - containerRect.top;
+      const desiredLeft = targetLeftInContent - stickyRowWidth - padding;
+      const desiredTop = targetTopInContent - stickyHeaderHeight - (availableHeight - targetRect.height) / 2;
+      container.scrollTo({
+        top: Math.min(maxTop, Math.max(0, desiredTop)),
+        left: Math.min(maxLeft, Math.max(0, desiredLeft)),
+        behavior: "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [preview.focus_row, preview.focus_column, fullPreview?.sheet]);
+  return <div className="excel-preview full"><div className="excel-preview-label"><span><FileSpreadsheet />Excel全体プレビュー</span><small>{rows.length}行 × {columns.length}列</small></div><div className="excel-preview-scroll" ref={scrollRef}><table style={{ width: tableWidth }}><colgroup><col style={{ width: 34 }} />{columnWidths.map((width, index) => <col style={{ width }} key={columns[index]} />)}</colgroup><thead><tr><th /><>{columns.map(column => <th key={column}>{column}</th>)}</></tr></thead><tbody>{rows.map((row, rowOffset) => {
+    const rowNumber = startRow + rowOffset;
     return <tr key={rowNumber}><th>{rowNumber}</th>{row.map((value, columnOffset) => {
-      const columnNumber = preview.start_column + columnOffset;
-      const focused = rowNumber === preview.focus_row && (preview.focus_column == null || columnNumber === preview.focus_column);
-      return <td className={focused ? "focused" : ""} key={columnNumber} title={value}>{value}</td>;
+      const columnNumber = startColumn + columnOffset;
+      const cellKey = `${rowNumber}:${columnNumber}`;
+      if (mergedCoveredCells.has(cellKey)) return null;
+      const mergedRange = mergeAnchors.get(cellKey);
+      const containsFocus = mergedRange
+        ? preview.focus_row >= mergedRange.start_row && preview.focus_row <= mergedRange.end_row && (preview.focus_column == null || (preview.focus_column >= mergedRange.start_column && preview.focus_column <= mergedRange.end_column))
+        : rowNumber === preview.focus_row && (preview.focus_column == null || columnNumber === preview.focus_column);
+      const cellAnnotations = annotations.filter(({ finding }) => mergedRange
+        ? finding.row != null && finding.row >= mergedRange.start_row && finding.row <= mergedRange.end_row && (finding.column == null || (finding.column >= mergedRange.start_column && finding.column <= mergedRange.end_column))
+        : finding.row === rowNumber && (finding.column == null ? columnNumber === 1 : finding.column === columnNumber));
+      return <td className={`${containsFocus ? "focused" : ""} ${cellAnnotations.length ? "annotated" : ""} ${mergedRange ? "merged" : ""}`} key={columnNumber} data-row={rowNumber} data-column={columnNumber} rowSpan={mergedRange ? mergedRange.end_row - mergedRange.start_row + 1 : undefined} colSpan={mergedRange ? mergedRange.end_column - mergedRange.start_column + 1 : undefined} title={value}><span>{value}</span>{cellAnnotations.length ? <span className="cell-finding-ids">{cellAnnotations.map(({ id }) => <b key={id}>{id}</b>)}</span> : null}</td>;
     })}</tr>;
   })}</tbody></table></div></div>;
 }

@@ -794,7 +794,7 @@ button {
 }
 .checks-grid {
   display: grid;
-  grid-template-columns: minmax(330px, 0.9fr) minmax(360px, 1.1fr);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   min-height: 430px;
 }
 .check-list {
@@ -915,13 +915,32 @@ button {
 }
 .finding-list {
   display: grid;
+  align-content: start;
   gap: 10px;
+}
+.finding-detail-layout.has-preview {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) minmax(360px, 1.35fr);
+  align-items: start;
+  gap: 14px;
+}
+.finding-detail-layout.has-preview > .finding-list {
+  max-height: 520px;
+  padding-right: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .finding-list article {
   padding: 13px;
   border: 1px solid #e2e8ea;
   border-radius: 10px;
   background: #fbfcfc;
+}
+.finding-list article.selected {
+  border-color: #3c9877;
+  background: #f0f8f5;
+  box-shadow: inset 3px 0 #16815e;
 }
 .finding-list header {
   display: flex;
@@ -958,12 +977,60 @@ button {
   font-size: 13px;
   line-height: 1.7;
 }
+.finding-locations {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+.finding-locations button,
+.finding-locations > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid #dce5e7;
+  border-radius: 7px;
+  color: #5e6f79;
+  background: #fff;
+  font-size: 11px;
+  text-align: left;
+}
+.finding-locations b {
+  flex: none;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #fff;
+  background: #28745b;
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+.finding-locations button:hover {
+  border-color: #91bdac;
+  background: #f5faf8;
+}
+.finding-locations button.active {
+  border-color: #16815e;
+  color: #126c50;
+  background: #e6f4ef;
+  font-weight: 800;
+}
+.finding-locations button:focus-visible {
+  outline: 2px solid #16815e;
+  outline-offset: 2px;
+}
 .excel-preview {
   margin-top: 12px;
   overflow: hidden;
   border: 1px solid #cfd9dd;
   border-radius: 9px;
   background: #fff;
+}
+.finding-detail-layout > .excel-preview {
+  margin-top: 0;
+  position: sticky;
+  top: 20px;
+  align-self: start;
 }
 .excel-preview-label {
   display: flex;
@@ -975,13 +1042,24 @@ button {
   background: #f5f7f8;
   font-size: 10px;
   font-weight: 800;
+  justify-content: space-between;
+}
+.excel-preview-label > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.excel-preview-label small {
+  color: #73828b;
+  font-weight: 700;
 }
 .excel-preview-label svg {
   width: 14px;
   color: #14754f;
 }
 .excel-preview-scroll {
-  overflow-x: auto;
+  max-height: 520px;
+  overflow: auto;
 }
 .excel-preview table {
   min-width: 100%;
@@ -1002,17 +1080,35 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.excel-preview td {
+  vertical-align: top;
+}
+.excel-preview td > span:first-child {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
 .excel-preview thead th,
 .excel-preview tbody th {
+  position: sticky;
+  z-index: 2;
   width: 34px;
   color: #596a75;
   background: #eef2f3;
   text-align: center;
   font-weight: 700;
 }
-.excel-preview thead th:not(:first-child),
-.excel-preview td {
-  width: 110px;
+.excel-preview thead th {
+  top: 0;
+  z-index: 3;
+}
+.excel-preview tbody th {
+  left: 0;
+}
+.excel-preview thead th:first-child {
+  left: 0;
+  z-index: 4;
 }
 .excel-preview td.focused {
   position: relative;
@@ -1020,6 +1116,35 @@ button {
   background: #fff0f0;
   box-shadow: inset 0 0 0 2px #dc4f4f;
   font-weight: 800;
+}
+.excel-preview td.merged.focused {
+  background-color: #fff0f0;
+  box-shadow: inset 0 0 0 2px #dc4f4f;
+}
+.excel-preview td.annotated {
+  position: relative;
+  height: 42px;
+  padding-top: 18px;
+}
+.excel-preview td.annotated > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-finding-ids {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  display: flex;
+  gap: 2px;
+}
+.cell-finding-ids b {
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  background: #c53f3f;
+  font-size: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
 }
 .excel-preview tr:last-child > * {
   border-bottom: 0;
@@ -1352,6 +1477,15 @@ button {
   }
   .check-row strong {
     font-size: 12px;
+  }
+  .finding-detail-layout.has-preview {
+    grid-template-columns: 1fr;
+  }
+  .finding-detail-layout.has-preview > .finding-list {
+    max-height: 360px;
+  }
+  .finding-detail-layout > .excel-preview {
+    position: static;
   }
 }
 

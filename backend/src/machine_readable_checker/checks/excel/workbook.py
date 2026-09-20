@@ -27,6 +27,19 @@ def check_xlsx_file(path: Path) -> CheckResult:
             _check_xlsx_objects(result, sheet)
             _check_xlsx_formulas(result, sheet)
             rows = [[cell.value for cell in row] for row in sheet.iter_rows()]
+            result.sheet_previews.append(_build_sheet_preview(
+                sheet.title,
+                rows,
+                [
+                    {
+                        "start_row": merged.min_row,
+                        "end_row": merged.max_row,
+                        "start_column": merged.min_col,
+                        "end_column": merged.max_col,
+                    }
+                    for merged in sheet.merged_cells.ranges
+                ],
+            ))
             sheet_result = check_rows(rows, f"{path}:{sheet.title}")
             result.findings.extend(replace(finding, sheet=sheet.title) for finding in sheet_result.findings)
         result.findings = [_with_xlsx_preview(finding, workbook) for finding in result.findings]
@@ -48,6 +61,19 @@ def check_xls_file(path: Path) -> CheckResult:
                 continue
             _check_xls_merged_cells(result, sheet)
             rows = [[sheet.cell_value(row_index, column_index) for column_index in range(sheet.ncols)] for row_index in range(sheet.nrows)]
+            result.sheet_previews.append(_build_sheet_preview(
+                sheet.name,
+                rows,
+                [
+                    {
+                        "start_row": row_start + 1,
+                        "end_row": row_end,
+                        "start_column": column_start + 1,
+                        "end_column": column_end,
+                    }
+                    for row_start, row_end, column_start, column_end in sheet.merged_cells
+                ],
+            ))
             sheet_result = check_rows(rows, f"{path}:{sheet.name}")
             result.findings.extend(replace(finding, sheet=sheet.name) for finding in sheet_result.findings)
         result.findings = [_with_xls_preview(finding, workbook) for finding in result.findings]
@@ -169,3 +195,16 @@ def _preview_value(value) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _build_sheet_preview(sheet: str, rows: list[list], merged_ranges: list[dict]) -> dict:
+    column_count = max((len(row) for row in rows), default=0)
+    return {
+        "sheet": sheet,
+        "columns": [get_column_letter(column) for column in range(1, column_count + 1)],
+        "rows": [
+            [_preview_value(row[index]) if index < len(row) else "" for index in range(column_count)]
+            for row in rows
+        ],
+        "merged_ranges": merged_ranges,
+    }
