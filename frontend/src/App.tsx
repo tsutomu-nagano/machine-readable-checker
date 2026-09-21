@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, Braces, CheckCircle2, ChevronRight, CircleHelp, Clock3, FileCheck2,
-  FileSpreadsheet, FileText, Info, LoaderCircle, Trash2, UploadCloud, X, XCircle
+  AlertTriangle, Braces, CheckCircle2, ChevronRight, CircleHelp, Clock3, Copy, Download, FileCheck2,
+  ExternalLink, FileSpreadsheet, FileText, Info, LoaderCircle, Trash2, UploadCloud, X, XCircle
 } from "lucide-react";
 import { checkFile, checkUrl } from "@/lib/api";
 import { historyStore } from "@/lib/history-store";
@@ -56,10 +56,25 @@ function App() {
 }
 
 function Header() {
-  return <header className="topbar">
-    <div className="header-brand"><img src={`${import.meta.env.BASE_URL}logo.png`} alt="machine readability checker" /><span>統計表の品質を、すばやく確かめる</span></div>
+  const [aboutOpen, setAboutOpen] = useState(false);
+  return <><header className="topbar">
+    <div className="header-brand"><img src={`${import.meta.env.BASE_URL}logo.png`} alt="machine readability checker" /><span>統計表の品質を、すばやく確かめる</span><button type="button" className="header-about-button" onClick={() => setAboutOpen(true)}><Info />このアプリについて</button></div>
     <div className="header-actions"><a className="header-api-link" href="/docs" target="_blank" rel="noreferrer"><Braces />API仕様</a><span className="service-status"><i />サービス稼働中</span></div>
-  </header>;
+  </header>{aboutOpen ? <AboutDialog onClose={() => setAboutOpen(false)} /> : null}</>;
+}
+
+function AboutDialog({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  return <div className="about-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="about-dialog" role="dialog" aria-modal="true" aria-labelledby="about-dialog-title">
+      <header><div><Info /><h2 id="about-dialog-title">このアプリケーションについて</h2></div><button type="button" aria-label="閉じる" onClick={onClose}><X /></button></header>
+      <div className="about-dialog-content"><p>機械判読可能性チェッカーは、CSV・TSV・Excel形式の統計表が、機械で処理しやすい構成になっているかを確認するためのツールです。</p><p>ファイル形式、項目名、セル結合、数値表現、データの分断などを検査し、修正や確認が必要な箇所を表形式のプレビューとともに表示します。</p><div className="about-dialog-reference"><strong>チェック項目の参考資料</strong><p>チェック内容の詳細は、e-Statの資料をご確認ください。</p><a href="https://www.e-stat.go.jp/estat/html/machine-readable-stats-format.pdf" target="_blank" rel="noreferrer"><ExternalLink />機械判読可能な統計データの表記方法（PDF）</a></div><small>チェック結果は判定を支援するものであり、データの品質や正確性を保証するものではありません。</small></div>
+    </section>
+  </div>;
 }
 
 function CheckModal({ busy, notice, onCheck, onClose }: { busy: boolean; notice: string; onCheck: (s: Source, f: File | null, u: string) => void; onClose: () => void }) {
@@ -78,11 +93,30 @@ function CheckModal({ busy, notice, onCheck, onClose }: { busy: boolean; notice:
 }
 
 function ResultsPage({ result, records, onOpen, onDelete, onOpenCheck }: { result: CheckResult | null; records: HistoryRecord[]; onOpen: (r: HistoryRecord) => void; onDelete: (r: HistoryRecord) => void; onOpenCheck: () => void }) {
+  if (result) return <ResultReview key={`${result.path}-${result.filename}`} result={result} records={records} onOpen={onOpen} onDelete={onDelete} onOpenCheck={onOpenCheck} />;
   return <div className="page-stack">
     <div className="review-layout">
       <CheckResultList records={records} activeResult={result} onOpen={onOpen} onDelete={onDelete} onOpenCheck={onOpenCheck} />
-      {result ? <ResultDashboard key={`${result.path}-${result.filename}`} result={result} /> : <EmptyResult />}
+      <EmptyResult />
     </div>
+  </div>;
+}
+
+function ResultReview({ result, records, onOpen, onDelete, onOpenCheck }: { result: CheckResult; records: HistoryRecord[]; onOpen: (r: HistoryRecord) => void; onDelete: (r: HistoryRecord) => void; onOpenCheck: () => void }) {
+  const [onlyIssues, setOnlyIssues] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const applicableChecks = getApplicableChecks(result);
+  const visibleChecks = onlyIssues ? applicableChecks.filter(check => check.status === "issues_found") : applicableChecks;
+  const [selectedId, setSelectedId] = useState(applicableChecks.find(check => check.status === "issues_found")?.id ?? applicableChecks[0]?.id);
+  const selected = applicableChecks.find(check => check.id === selectedId);
+  const findings = selected ? result.findings.filter(finding => selected.finding_codes.includes(finding.code)) : [];
+  const openCheckDetail = (id: string) => { setSelectedId(id); setDrawerOpen(true); };
+  return <div className="page-stack">
+    <div className="review-layout">
+      <CheckResultList records={records} activeResult={result} onOpen={onOpen} onDelete={onDelete} onOpenCheck={onOpenCheck} />
+      <ResultDashboard result={result} applicableChecks={applicableChecks} visibleChecks={visibleChecks} selected={drawerOpen ? selected : undefined} onlyIssues={onlyIssues} onOnlyIssuesChange={setOnlyIssues} onCheckSelect={openCheckDetail} />
+    </div>
+    {drawerOpen && selected ? <CheckDetailDrawer result={result} check={selected} findings={findings} onClose={() => setDrawerOpen(false)} /> : null}
   </div>;
 }
 
@@ -126,19 +160,27 @@ function summarizeChecks(checks: CheckItem[]): CheckResult["summary"] {
   }, { passed: 0, issues_found: 0, unchecked: 0, not_applicable: 0 });
 }
 
-function ResultDashboard({ result }: { result: CheckResult }) {
-  const [onlyIssues, setOnlyIssues] = useState(false);
-  const applicableChecks = getApplicableChecks(result);
+function ResultDashboard({ result, applicableChecks, visibleChecks, selected, onlyIssues, onOnlyIssuesChange, onCheckSelect }: { result: CheckResult; applicableChecks: CheckItem[]; visibleChecks: CheckItem[]; selected?: CheckItem; onlyIssues: boolean; onOnlyIssuesChange: (value: boolean) => void; onCheckSelect: (id: string) => void }) {
   const summary = summarizeChecks(applicableChecks);
-  const visible = onlyIssues ? applicableChecks.filter(c => c.status === "issues_found") : applicableChecks;
-  const [selectedId, setSelectedId] = useState(applicableChecks.find(c => c.status === "issues_found")?.id ?? applicableChecks[0]?.id);
-  const selected = visible.find(c => c.id === selectedId) ?? visible[0];
-  const findings = selected ? result.findings.filter(f => selected.finding_codes.includes(f.code)) : [];
   return <div className="result-stack">
-    <section className="panel results-panel"><ResultContextHeader result={result} summary={summary} checkCount={applicableChecks.length} /><div className="results-toolbar"><div><h2>チェック項目</h2></div><label className="filter-check"><input type="checkbox" checked={onlyIssues} onChange={e => setOnlyIssues(e.target.checked)} />指摘ありのみ表示</label></div>
-      <div className="checks-grid"><div className="check-list">{visible.length ? visible.map(check => <CheckRow key={check.id} check={check} active={selected?.id === check.id} onClick={() => setSelectedId(check.id)} />) : <div className="no-issues"><CheckCircle2 />指摘のある項目はありません</div>}</div><CheckDetail check={selected} findings={findings} sheetPreviews={result.sheet_previews ?? []} /></div>
+    <section className="panel results-panel"><ResultContextHeader result={result} summary={summary} checkCount={applicableChecks.length} />
+      <div className="results-toolbar"><div><h2>チェック項目</h2><p>項目を選択すると指摘内容を表示します</p></div><label className="filter-check"><input type="checkbox" checked={onlyIssues} onChange={event => onOnlyIssuesChange(event.target.checked)} />指摘ありのみ表示</label></div>
+      <div className="detail-check-list">{visibleChecks.length ? visibleChecks.map(check => <CheckRow key={check.id} check={check} active={selected?.id === check.id} onClick={() => onCheckSelect(check.id)} />) : <div className="no-issues"><CheckCircle2 />指摘のある項目はありません</div>}</div>
     </section>
-    <details className="json-panel"><summary><Braces />検査結果のJSONを表示</summary><pre>{JSON.stringify(result, null, 2)}</pre></details>
+  </div>;
+}
+
+function CheckDetailDrawer({ result, check, findings, onClose }: { result: CheckResult; check: CheckItem; findings: Finding[]; onClose: () => void }) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  return <div className="detail-drawer-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <aside className="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detail-drawer-title">
+      <div className="detail-drawer-heading"><div><span>CHECK DETAIL</span><h2 id="detail-drawer-title">指摘一覧</h2></div><button type="button" aria-label="閉じる" onClick={onClose}><X /></button></div>
+      <div className="detail-drawer-body"><CheckDetail check={check} findings={findings} sheetPreviews={result.sheet_previews ?? []} previewFormat={isExcelResult(result) ? "excel" : "csv"} /></div>
+    </aside>
   </div>;
 }
 
@@ -146,11 +188,13 @@ function ResultContextHeader({ result, summary, checkCount }: { result: CheckRes
   const isExcel = isExcelResult(result);
   const TypeIcon = isExcel ? FileSpreadsheet : FileText;
   const [fileInformationOpen, setFileInformationOpen] = useState(false);
+  const [jsonOpen, setJsonOpen] = useState(false);
   const fileInformationRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (!fileInformationOpen) return;
     const closeOutside = (event: PointerEvent) => {
-      if (!fileInformationRef.current?.contains(event.target as Node)) setFileInformationOpen(false);
+      const target = event.target as Node;
+      if (!fileInformationRef.current?.contains(target)) setFileInformationOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setFileInformationOpen(false);
@@ -173,8 +217,41 @@ function ResultContextHeader({ result, summary, checkCount }: { result: CheckRes
       <Metric label="指摘あり" value={summary.issues_found} tone="red" />
       <Metric label="チェック不可" value={summary.unchecked} tone="amber" />
     </div>
-    <details ref={fileInformationRef} className="file-information" open={fileInformationOpen} onToggle={event => setFileInformationOpen(event.currentTarget.open)}><summary><Info />ファイル情報</summary><div><dl><dt>ファイル名</dt><dd>{result.filename}</dd><dt>取得方法</dt><dd>{result.source_url ? "e-Stat取得" : "ファイルアップロード"}</dd>{result.source_url ? <><dt>取得元URL</dt><dd><a href={result.source_url} target="_blank" rel="noreferrer">{result.source_url}</a></dd></> : null}{result.encoding ? <><dt>文字コード</dt><dd>{result.encoding}</dd></> : null}</dl></div></details>
+    <div className="result-context-actions">
+      <button type="button" className="json-dialog-trigger" onClick={() => { setJsonOpen(true); setFileInformationOpen(false); }}><Braces />JSON</button>
+      <details ref={fileInformationRef} className="file-information" open={fileInformationOpen} onToggle={event => { const open = event.currentTarget.open; setFileInformationOpen(open); if (open) setJsonOpen(false); }}><summary><Info />ファイル情報</summary><div><dl><dt>ファイル名</dt><dd>{result.filename}</dd><dt>取得方法</dt><dd>{result.source_url ? "e-Stat取得" : "ファイルアップロード"}</dd>{result.source_url ? <><dt>取得元URL</dt><dd><a href={result.source_url} target="_blank" rel="noreferrer">{result.source_url}</a></dd></> : null}{result.encoding ? <><dt>文字コード</dt><dd>{result.encoding}</dd></> : null}</dl></div></details>
+    </div>
+    {jsonOpen ? <JsonDialog result={result} onClose={() => setJsonOpen(false)} /> : null}
   </header>;
+}
+
+function JsonDialog({ result, onClose }: { result: CheckResult; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const json = JSON.stringify(result, null, 2);
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  const copyJson = async () => {
+    await navigator.clipboard.writeText(json);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
+  const downloadJson = () => {
+    const url = URL.createObjectURL(new Blob([json], { type: "application/json;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${result.filename.replace(/\.[^.]+$/, "")}-check-result.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return <div className="json-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="json-dialog" role="dialog" aria-modal="true" aria-labelledby="json-dialog-title">
+      <header><div className="json-dialog-title"><Braces /><h2 id="json-dialog-title">検査結果のJSON</h2></div><div className="json-dialog-actions"><button type="button" onClick={copyJson}>{copied ? <CheckCircle2 /> : <Copy />}{copied ? "コピー済み" : "全体をコピー"}</button><button type="button" onClick={downloadJson}><Download />ダウンロード</button><button type="button" className="json-dialog-close" aria-label="閉じる" onClick={onClose}><X /></button></div></header>
+      <pre>{json}</pre>
+    </section>
+  </div>;
 }
 
 function Metric({ label, value, tone }: { label: string; value: number; tone: string }) { return <span className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong></span>; }
@@ -184,7 +261,7 @@ function CheckRow({ check, active, onClick }: { check: CheckItem; active: boolea
   return <button className={`check-row ${check.status} ${active ? "active" : ""}`} onClick={onClick}><Icon /><span><small>{number}</small><strong>{title.join(" ")}</strong></span><em>{statusText[check.status]}{check.finding_count ? ` ${check.finding_count}` : ""}</em><ChevronRight /></button>;
 }
 
-function CheckDetail({ check, findings, sheetPreviews }: { check?: CheckItem; findings: Finding[]; sheetPreviews: ExcelSheetPreview[] }) {
+function CheckDetail({ check, findings, sheetPreviews, previewFormat }: { check?: CheckItem; findings: Finding[]; sheetPreviews: ExcelSheetPreview[]; previewFormat: "excel" | "csv" }) {
   const [selectedFindingIndex, setSelectedFindingIndex] = useState(0);
   useEffect(() => { setSelectedFindingIndex(0); }, [check?.id]);
   if (!check) return <aside className="check-detail"><CircleHelp /><h3>表示する項目がありません</h3></aside>;
@@ -202,19 +279,19 @@ function CheckDetail({ check, findings, sheetPreviews }: { check?: CheckItem; fi
     {findings.length ? <div className={`finding-detail-layout ${selectedFinding ? "has-preview" : ""}`}><div className="finding-list">{findingGroups.map((group, groupIndex) => {
       const representative = group[0];
       const selected = group.includes(selectedFinding);
-      return <article className={selected ? "selected" : ""} key={`${representative.message}-${groupIndex}`}><header><span className={representative.severity}><AlertTriangle />{representative.severity === "error" ? "要修正" : "要確認"}</span>{group.length > 1 ? <small>{group.length}箇所</small> : null}</header><p>{representative.message}</p><div className="finding-locations">{group.map((finding, index) => {
+      return <article className={`${representative.severity} ${selected ? "selected" : ""}`} key={`${representative.message}-${groupIndex}`}><header><span className={representative.severity}><AlertTriangle />{representative.severity === "error" ? "要修正" : "要確認"}</span>{group.length > 1 ? <small>{group.length}箇所</small> : null}</header><p>{representative.message}</p><div className="finding-locations">{group.map((finding, index) => {
         const previewIndex = previewFindings.indexOf(finding);
         const selectable = previewIndex >= 0;
         const location = [finding.sheet ? `シート: ${finding.sheet}` : null, finding.row ? `${finding.row}行${finding.column ? ` ${finding.column}列` : ""}` : null].filter(Boolean).join(" / ") || "位置情報なし";
         const findingId = findingIds.get(finding);
         return selectable ? <button type="button" className={selectedFinding === finding ? "active" : ""} key={`${finding.code}-${index}`} onClick={() => setSelectedFindingIndex(previewIndex)}><b>{findingId}</b>{location}</button> : <span key={`${finding.code}-${index}`}><b>{findingId}</b>{location}</span>;
       })}</div></article>;
-    })}</div>{selectedFinding?.preview ? <ExcelPreviewTable preview={selectedFinding.preview} fullPreview={sheetPreviews.find(item => item.sheet === selectedFinding.sheet)} annotations={findings.filter(finding => finding.sheet === selectedFinding.sheet && finding.row != null).map(finding => ({ finding, id: findingIds.get(finding)! }))} /> : null}</div>
+    })}</div>{selectedFinding?.preview ? <ExcelPreviewTable preview={selectedFinding.preview} fullPreview={sheetPreviews.find(item => item.sheet === (selectedFinding.sheet ?? ""))} annotations={findings.filter(finding => finding.sheet === selectedFinding.sheet && finding.row != null).map(finding => ({ finding, id: findingIds.get(finding)! }))} format={previewFormat} focusSeverity={selectedFinding.severity} /> : null}</div>
       : <div className="detail-empty"><CheckCircle2 /><p>{check.status === "passed" ? "この項目に指摘はありません。" : check.status === "unchecked" ? "この項目はチェックできませんでした。" : "このファイル形式では対象外です。"}</p></div>}
   </aside>;
 }
 
-function ExcelPreviewTable({ preview, fullPreview, annotations }: { preview: ExcelPreview; fullPreview?: ExcelSheetPreview; annotations: { finding: Finding; id: string }[] }) {
+function ExcelPreviewTable({ preview, fullPreview, annotations, format, focusSeverity }: { preview: ExcelPreview; fullPreview?: ExcelSheetPreview; annotations: { finding: Finding; id: string }[]; format: "excel" | "csv"; focusSeverity: Finding["severity"] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const columns = fullPreview?.columns ?? preview.columns;
   const rows = fullPreview?.rows ?? preview.rows;
@@ -265,7 +342,8 @@ function ExcelPreviewTable({ preview, fullPreview, annotations }: { preview: Exc
     });
     return () => cancelAnimationFrame(frame);
   }, [preview.focus_row, preview.focus_column, fullPreview?.sheet]);
-  return <div className="excel-preview full"><div className="excel-preview-label"><span><FileSpreadsheet />Excel全体プレビュー</span><small>{rows.length}行 × {columns.length}列</small></div><div className="excel-preview-scroll" ref={scrollRef}><table style={{ width: tableWidth }}><colgroup><col style={{ width: 34 }} />{columnWidths.map((width, index) => <col style={{ width }} key={columns[index]} />)}</colgroup><thead><tr><th /><>{columns.map(column => <th key={column}>{column}</th>)}</></tr></thead><tbody>{rows.map((row, rowOffset) => {
+  const PreviewIcon = format === "excel" ? FileSpreadsheet : FileText;
+  return <div className="excel-preview full"><div className="excel-preview-label"><span><PreviewIcon />{format === "excel" ? "Excel" : "CSV"}全体プレビュー</span><small>{rows.length}行 × {columns.length}列</small></div><div className="excel-preview-scroll" ref={scrollRef}><table style={{ width: tableWidth }}><colgroup><col style={{ width: 34 }} />{columnWidths.map((width, index) => <col style={{ width }} key={columns[index]} />)}</colgroup><thead><tr><th /><>{columns.map(column => <th key={column}>{column}</th>)}</></tr></thead><tbody>{rows.map((row, rowOffset) => {
     const rowNumber = startRow + rowOffset;
     return <tr key={rowNumber}><th>{rowNumber}</th>{row.map((value, columnOffset) => {
       const columnNumber = startColumn + columnOffset;
@@ -278,7 +356,8 @@ function ExcelPreviewTable({ preview, fullPreview, annotations }: { preview: Exc
       const cellAnnotations = annotations.filter(({ finding }) => mergedRange
         ? finding.row != null && finding.row >= mergedRange.start_row && finding.row <= mergedRange.end_row && (finding.column == null || (finding.column >= mergedRange.start_column && finding.column <= mergedRange.end_column))
         : finding.row === rowNumber && (finding.column == null ? columnNumber === 1 : finding.column === columnNumber));
-      return <td className={`${containsFocus ? "focused" : ""} ${cellAnnotations.length ? "annotated" : ""} ${mergedRange ? "merged" : ""}`} key={columnNumber} data-row={rowNumber} data-column={columnNumber} rowSpan={mergedRange ? mergedRange.end_row - mergedRange.start_row + 1 : undefined} colSpan={mergedRange ? mergedRange.end_column - mergedRange.start_column + 1 : undefined} title={value}><span>{value}</span>{cellAnnotations.length ? <span className="cell-finding-ids">{cellAnnotations.map(({ id }) => <b key={id}>{id}</b>)}</span> : null}</td>;
+      const annotationSeverity = cellAnnotations.some(({ finding }) => finding.severity === "error") ? "error" : "warning";
+      return <td className={`${containsFocus ? `focused ${focusSeverity}` : ""} ${cellAnnotations.length ? `annotated ${annotationSeverity}` : ""} ${mergedRange ? "merged" : ""}`} key={columnNumber} data-row={rowNumber} data-column={columnNumber} rowSpan={mergedRange ? mergedRange.end_row - mergedRange.start_row + 1 : undefined} colSpan={mergedRange ? mergedRange.end_column - mergedRange.start_column + 1 : undefined} title={value}><span>{value}</span>{cellAnnotations.length ? <span className="cell-finding-ids">{cellAnnotations.map(({ finding, id }) => <b className={finding.severity} key={id}>{id}</b>)}</span> : null}</td>;
     })}</tr>;
   })}</tbody></table></div></div>;
 }

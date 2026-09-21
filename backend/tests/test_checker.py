@@ -31,6 +31,19 @@ class CheckerTests(unittest.TestCase):
                 self.assertEqual(result.encoding, expected)
                 self.assertEqual(result.as_dict()["encoding"], expected)
 
+    def test_csv_findings_include_full_and_focused_previews(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "table.csv"
+            path.write_text("年,人口\n2025,1,200 人\n", encoding="utf-8")
+
+            result = check_file(path)
+
+        preview = next(finding.preview for finding in result.findings if finding.code == "inconsistent-columns")
+        self.assertEqual(preview["focus_row"], 2)
+        self.assertEqual(preview["rows"][1], ["2025", "1", "200 人"])
+        self.assertEqual(result.sheet_previews[0]["columns"], ["A", "B", "C"])
+        self.assertEqual(result.sheet_previews[0]["rows"][0], ["年", "人口", ""])
+
     def test_valid_table_has_no_findings(self):
         self.assertEqual(codes([["年", "人口（人）"], ["2025", "1234"]]), set())
 

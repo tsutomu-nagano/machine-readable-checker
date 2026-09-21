@@ -43,6 +43,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(checks["estat-2-6"], "not_applicable")
         self.assertEqual(len([key for key in checks if key.startswith("estat-")]), 29)
         self.assertEqual(payload["summary"]["issues_found"], 0)
+        self.assertEqual(payload["sheet_previews"][0]["rows"], [["年", "人口（人）"], ["2025", "100"]])
 
     def test_upload_accepts_cp932_csv_and_returns_encoding(self):
         response = self.client.post(
